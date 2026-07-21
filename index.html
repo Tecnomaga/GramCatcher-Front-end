@@ -369,7 +369,7 @@ async function loadGame() {
         if (d.exists) {
             state.balance = d.balance;
             state.inventory = d.inventory;
-            state.collection = d.pokemonCollection;  // renomeado no servidor
+            state.collection = d.collection;   // ← corrigido para 'collection'
             state.storageBoxes = d.storageBoxes;
             state.tutorialBalls = d.tutorialBalls;
             state.tutorialActive = d.tutorialActive;
