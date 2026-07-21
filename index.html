@@ -8,103 +8,124 @@
     <style>
         :root {
             --gold: #f4c542;
+            --gold-dark: #c8960c;
             --font: 'Press Start 2P', cursive;
             --shadow: 6px 6px 0 #000;
             --shadow-sm: 3px 3px 0 #000;
+            --bg-dark: #0a1020;
+            --bg-panel: #1a1f2e;
+            --bg-modal: #1e2e42;
+            --text-primary: #ffffff;
+            --text-secondary: #dde;
+            --text-muted: #aaa;
+            --green: #5a9c3f;
+            --green-dark: #2d6a20;
+            --red: #d94040;
+            --red-dark: #b03030;
+            --blue: #3a7bd5;
+            --blue-dark: #2563a8;
+            --grass-light: #7ab648;
+            --grass-dark: #6aa038;
+            --border-color: #4a5a7e;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            background: #06080d; display:flex; justify-content:center; align-items:center; min-height:100vh;
+            background: var(--bg-dark); display:flex; justify-content:center; align-items:center; min-height:100vh;
             font-family:var(--font); image-rendering:pixelated; overflow:hidden; user-select:none;
         }
         .starfield { position:fixed; inset:0; pointer-events:none; z-index:0; background:radial-gradient(ellipse at center, #0a1628 0%, #06080d 70%); }
-        .starfield::before { content:''; position:absolute; inset:0; background-image: radial-gradient(1px 1px at 20% 30%, #fff8, transparent), radial-gradient(1px 1px at 50% 60%, #fff6, transparent), radial-gradient(1.5px 1.5px at 70% 20%, #fff9, transparent); animation: twinkle 4s infinite alternate; }
+        .starfield::before { content:''; position:absolute; inset:0; background-image: radial-gradient(1px 1px at 20% 30%, #fff8, transparent), radial-gradient(1px 1px at 50% 60%, #fff6, transparent), radial-gradient(1.5px 1.5px at 70% 20%, #fff9, transparent), radial-gradient(1px 1px at 90% 10%, #fff7, transparent), radial-gradient(1.5px 1.5px at 40% 80%, #fff5, transparent); animation: twinkle 4s infinite alternate; }
         @keyframes twinkle { 0%{opacity:0.6} 50%{opacity:1} 100%{opacity:0.7} }
-        .phone { width:100%; max-width:420px; height:95vh; max-height:860px; background:#1a1f2e; border-radius:32px; box-shadow:0 0 60px rgba(100,140,220,0.25),0 0 120px #000b; display:flex; flex-direction:column; overflow:hidden; position:relative; z-index:1; border:3px solid #2a3040; }
+        .phone { width:100%; max-width:420px; height:95vh; max-height:860px; background:var(--bg-panel); border-radius:32px; box-shadow:0 0 60px rgba(100,140,220,0.3),0 0 120px #000b; display:flex; flex-direction:column; overflow:hidden; position:relative; z-index:1; border:3px solid #2a3040; }
         .screen { position:absolute; inset:0; display:flex; flex-direction:column; transition:0.4s; pointer-events:auto; overflow:hidden; }
         .screen.hidden { opacity:0; pointer-events:none; transform:scale(0.96); z-index:0; }
         .screen.active { opacity:1; pointer-events:auto; transform:scale(1); z-index:10; }
-        .pokeball-logo { width:80px; height:80px; border-radius:50%; background:linear-gradient(to bottom, #e03a3a 0%, #e03a3a 48%, #222 48%, #222 52%, #f0f0f0 52%, #f0f0f0 100%); border:4px solid #222; position:relative; box-shadow:0 0 25px #fff3,0 8px 20px #000b; animation:logoFloat 2.5s infinite; }
+        .pokeball-logo { width:80px; height:80px; border-radius:50%; background:linear-gradient(to bottom, #e03a3a 0%, #e03a3a 48%, #222 48%, #222 52%, #f0f0f0 52%, #f0f0f0 100%); border:4px solid #222; position:relative; box-shadow:0 0 30px rgba(255,255,255,0.3),0 8px 20px #000b; animation:logoFloat 2.5s infinite; }
         .pokeball-logo::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:20px; height:20px; border-radius:50%; background:#f0f0f0; border:4px solid #222; }
         @keyframes logoFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
         #loadingScreen { background:linear-gradient(180deg,#0d1b2d,#0a1520); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:32px; text-align:center; padding:20px; }
-        .loading-title { color:var(--gold); font-size:1.6rem; text-shadow:4px 4px 0 #000; letter-spacing:2px; line-height:1.8; }
-        .loading-bar-outer { width:220px; height:16px; background:#1a2a3a; border:3px solid #3a4a5e; }
-        .loading-bar-inner { height:100%; background:linear-gradient(90deg,#4a90d9,#6ab0f0,#4a90d9); background-size:200% 100%; animation:shimmer 1.5s linear infinite; }
+        .loading-title { color:var(--gold); font-size:1.6rem; text-shadow:4px 4px 0 #000; letter-spacing:2px; line-height:1.8; animation:logoFloat 2.5s infinite; }
+        .loading-bar-outer { width:220px; height:16px; background:#1a2a3a; border:3px solid #3a4a5e; border-radius:2px; overflow:hidden; }
+        .loading-bar-inner { height:100%; background:linear-gradient(90deg,#4a90d9,#6ab0f0,#4a90d9); background-size:200% 100%; animation:shimmer 1.5s linear infinite; transition: width 0.3s; }
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .loading-subtitle { color:#aaccff; font-size:0.5rem; letter-spacing:1px; }
         .input-pixel {
             background:#0a1520; border:3px solid #2a3f5a; color:#e0e8f0; padding:16px;
             font-family:var(--font); font-size:0.7rem; width:100%; max-width:320px; outline:none; border-radius:0;
             min-height:44px; user-select: text; -webkit-user-select: text;
         }
-        .input-pixel:focus { border-color:var(--gold); }
-        .btn-pixel { background:#d94040; border:3px solid #b03030; color:#fff; padding:16px 28px; font-family:var(--font); font-size:0.7rem; box-shadow:var(--shadow-sm); cursor:pointer; text-transform:uppercase; letter-spacing:1px; width:100%; max-width:320px; }
+        .input-pixel:focus { border-color:var(--gold); box-shadow:0 0 12px rgba(244,197,66,0.3); }
+        .btn-pixel { background:var(--red); border:3px solid var(--red-dark); color:#fff; padding:16px 28px; font-family:var(--font); font-size:0.7rem; box-shadow:var(--shadow-sm); cursor:pointer; text-transform:uppercase; letter-spacing:1px; width:100%; max-width:320px; transition: all 0.1s; }
         .btn-pixel:active { box-shadow:1px 1px 0 #000; transform:translate(2px,2px); }
-        .btn-pixel.gold { background:linear-gradient(180deg,#c8960c,#a07808); border-color:#7a5800; color:#1a1a20; }
-        .btn-pixel.blue { background:linear-gradient(180deg,#3a7bd5,#2563a8); border-color:#1a4a7a; }
-        .btn-pixel.green { background:linear-gradient(180deg,#4a9c3f,#2d6a20); border-color:#1a4a10; }
+        .btn-pixel.gold { background:linear-gradient(180deg,var(--gold),var(--gold-dark)); border-color:#7a5800; color:#1a1a20; }
+        .btn-pixel.blue { background:linear-gradient(180deg,var(--blue),var(--blue-dark)); border-color:#1a4a7a; }
+        .btn-pixel.green { background:linear-gradient(180deg,var(--green),var(--green-dark)); border-color:#1a4a10; }
         .btn-pixel.small { padding:10px 14px; font-size:0.55rem; max-width:160px; }
         .btn-pixel:disabled { opacity:0.5; pointer-events:none; filter:grayscale(0.5); }
         .top-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:linear-gradient(180deg,#1e2e42,#162536); border-bottom:3px solid #0a121e; flex-wrap:wrap; gap:6px; }
-        .ball-indicator { display:flex; align-items:center; gap:4px; font-size:0.5rem; color:#dde; }
-        .balance { background:#1a2a1a; padding:8px 12px; border:2px solid #b8861e; font-size:0.55rem; color:var(--gold); }
+        .ball-indicator { display:flex; align-items:center; gap:4px; font-size:0.5rem; color:var(--text-secondary); }
+        .balance { background:#1a2a1a; padding:8px 12px; border:2px solid #b8861e; font-size:0.55rem; color:var(--gold); border-radius:4px; }
         .production-hud { 
-            font-size:0.45rem; color:#5f5; background:#0a1a0a; padding:6px 10px; 
-            border:2px solid #2a5a2a; text-align:center; line-height:1.4;
+            font-size:0.5rem; color:#ffd700; background:#0a1a0a; padding:8px 12px; 
+            border:2px solid #2a5a2a; text-align:center; line-height:1.4; border-radius:4px;
+            text-shadow:0 0 8px rgba(255,215,0,0.3);
         }
-        .production-hud .prod-day { color:#ffd700; font-size:0.5rem; }
-        .production-hud .prod-sec { color:#5f5; font-size:0.35rem; }
         .map-container { flex:1; position:relative; overflow:hidden; background:#2d5a24; touch-action:none; }
         canvas#gameCanvas { width:100%; height:100%; image-rendering:pixelated; }
         .game-controls { position:absolute; inset:0; pointer-events:none; z-index:20; opacity:0; transition:0.5s; }
         .game-controls.visible { opacity:1; pointer-events:auto; }
         .joystick-zone { position:absolute; bottom:24px; left:20px; width:110px; height:110px; pointer-events:auto; }
-        .joystick-base { width:90px; height:90px; border-radius:50%; background:radial-gradient(circle, #1e283ccc, #0008); border:3px solid #fff6; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
-        .joystick-thumb { width:42px; height:42px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #e8e8e8, #999); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 3px 10px #0009; }
+        .joystick-base { width:90px; height:90px; border-radius:50%; background:radial-gradient(circle, #1e283ccc, #0008); border:3px solid rgba(255,255,255,0.4); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        .joystick-thumb { width:42px; height:42px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #e8e8e8, #999); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 3px 10px #0009; transition: transform 0.05s; }
         .action-btns { position:absolute; bottom:28px; right:18px; display:flex; flex-direction:column; gap:12px; pointer-events:auto; }
-        .btn-icon { width:54px; height:54px; background:radial-gradient(circle at 40% 35%, #3a4a5e, #1e2b3c); border:3px solid #4a5a7e; color:#fff; font-size:1.5rem; cursor:pointer; box-shadow:4px 4px 0 #000; display:flex; align-items:center; justify-content:center; }
+        .btn-icon { width:54px; height:54px; background:radial-gradient(circle at 40% 35%, #3a4a5e, #1e2b3c); border:3px solid var(--border-color); color:#fff; font-size:1.5rem; cursor:pointer; box-shadow:4px 4px 0 #000; display:flex; align-items:center; justify-content:center; border-radius:8px; transition: all 0.1s; }
         .btn-icon:active { box-shadow:1px 1px 0 #000; transform:translate(3px,3px); }
-        .modal-overlay { position:absolute; inset:0; background:#000c; z-index:50; display:flex; align-items:center; justify-content:center; padding:15px; backdrop-filter:blur(3px); pointer-events: auto; }
+        .modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.8); z-index:50; display:flex; align-items:center; justify-content:center; padding:15px; backdrop-filter:blur(3px); pointer-events: auto; animation: fadeIn 0.2s; }
         .modal-overlay.hidden { display:none; pointer-events: none; }
-        .modal-pixel { background:#1e2e42; border:4px solid #4a5a7e; padding:15px 15px 20px 15px; width:100%; max-width:380px; box-shadow:8px 8px 0 #000; color:#fff; font-size:0.6rem; position:relative; max-height:90vh; overflow-y:auto; text-align:center; line-height:1.7; display:flex; flex-direction:column; scrollbar-width:thin; }
-        .modal-pixel h3 { font-size:0.8rem; margin-bottom:14px; }
-        .modal-pixel p, .modal-pixel .label-text { font-size:0.55rem; margin:5px 0; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .modal-pixel { background:var(--bg-modal); border:4px solid var(--border-color); padding:15px 15px 20px 15px; width:100%; max-width:380px; box-shadow:8px 8px 0 #000; color:var(--text-primary); font-size:0.6rem; position:relative; max-height:90vh; overflow-y:auto; text-align:center; line-height:1.7; display:flex; flex-direction:column; scrollbar-width:thin; border-radius:4px; }
+        .modal-pixel.golden { border-color:var(--gold); box-shadow:0 0 25px rgba(244,197,66,0.3),8px 8px 0 #000; }
+        .modal-pixel h3 { font-size:0.8rem; margin-bottom:14px; color:var(--gold); }
+        .modal-pixel p, .modal-pixel .label-text { font-size:0.55rem; margin:5px 0; color:var(--text-secondary); }
         .modal-pixel .input-pixel { max-width:100%; margin:4px 0; font-size:0.6rem; padding:12px; }
         .modal-pixel .btn-pixel { max-width:100%; margin:6px 0; }
-        .modal-close { position:absolute; top:6px; right:8px; background:#3a3040; border:2px solid #5a4a5e; color:#fff; cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; z-index:5; font-size:0.55rem; }
+        .modal-close { position:absolute; top:6px; right:8px; background:#3a3040; border:2px solid #5a4a5e; color:#fff; cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; z-index:5; font-size:0.55rem; border-radius:4px; }
         .modal-close:disabled { opacity:0.3; pointer-events:none; }
         .pc-box { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; }
-        .pc-slot { background:#2a3a4e; border:2px solid #4a5a6e; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; padding:4px; }
+        .pc-slot { background:#2a3a4e; border:2px solid #4a5a6e; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; padding:4px; border-radius:4px; transition: all 0.15s; }
+        .pc-slot:hover { border-color:var(--gold); background:#2a3f5a; }
         .pc-slot img { width:44px; height:44px; image-rendering:pixelated; }
         .pc-slot .pc-name { font-size:0.35rem; color:#ffd700; margin-top:2px; text-align:center; }
         .pc-slot .pc-prod { font-size:0.3rem; color:#5f5; }
-        .pc-slot .pc-claim { font-size:0.35rem; color:#0f0; }
-        .pc-progress { width:80%; height:4px; background:#1a2a3a; border:1px solid #4a5a6e; margin:2px 0; }
-        .pc-progress-fill { height:100%; background:#ffd700; }
+        .pc-slot .pc-claim { font-size:0.35rem; color:#0f0; text-shadow:0 0 6px rgba(0,255,0,0.4); }
+        .pc-progress { width:80%; height:4px; background:#1a2a3a; border:1px solid #4a5a6e; margin:2px 0; border-radius:2px; overflow:hidden; }
+        .pc-progress-fill { height:100%; background:linear-gradient(90deg, #b8861e, #ffd700); border-radius:2px; transition: width 0.3s; }
         .ball-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-        .ball-slot { background:#2a3a4e; border:3px solid #5a6a7e; padding:12px 8px; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:0.45rem; }
+        .ball-slot { background:#2a3a4e; border:3px solid #5a6a7e; padding:12px 8px; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:0.45rem; border-radius:4px; transition: all 0.15s; }
+        .ball-slot:not(.disabled):hover { border-color:var(--gold); background:#2a3f5a; }
         .ball-slot.disabled { opacity:0.35; filter:grayscale(0.6); cursor:default; pointer-events:none; background:#1a2a3a; border-style:dashed; }
         .ball-slot img { width:36px; height:36px; image-rendering:pixelated; }
-        .battle-canvas { width:100%; border:3px solid #4a5a6e; background:#fff; flex-shrink:0; }
+        .battle-canvas { width:100%; border:3px solid #4a5a6e; background:#fff; flex-shrink:0; border-radius:4px; }
         .battle-text-box { background:#f8f0e0; padding:12px; border-top:4px solid #000; font-size:0.6rem; color:#000; line-height:1.6; min-height:65px; flex-shrink:0; }
-        .rarity-badge { display:inline-block; padding:6px 16px; font-size:0.55rem; border:2px solid #000; margin:4px 0; }
+        .rarity-badge { display:inline-block; padding:6px 16px; font-size:0.55rem; border:2px solid #000; margin:4px 0; border-radius:4px; }
         .rarity-badge.common{background:#8a8a8a;color:#000} .rarity-badge.rare{background:#4a90d9;color:#fff} .rarity-badge.epic{background:#9b59b6;color:#fff} .rarity-badge.legendary{background:#f1c40f;color:#000;animation:legendaryGlow 1s infinite alternate}
         @keyframes legendaryGlow { from{box-shadow:0 0 8px #f1c40f} to{box-shadow:0 0 20px #f1c40f,0 0 30px #fa0} }
-        .toast-container { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:999; display:flex; flex-direction:column; gap:8px; }
-        .toast { background:#1e2b3c; border:3px solid #4a5a7e; color:#fff; padding:14px 22px; font-family:var(--font); font-size:0.55rem; box-shadow:4px 4px 0 #000; animation:slideDown 0.3s ease-out, fadeOut 0.3s 2.5s forwards; max-width:90vw; }
-        .toast.success { border-color:#5a9c3f; } .toast.error { border-color:#e0434f; }
+        .toast-container { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+        .toast { background:#1e2b3c; border:3px solid #4a5a7e; color:#fff; padding:14px 22px; font-family:var(--font); font-size:0.55rem; box-shadow:4px 4px 0 #000; animation:slideDown 0.3s ease-out, fadeOut 0.3s 2.5s forwards; max-width:90vw; border-radius:4px; }
+        .toast.success { border-color:var(--green); } .toast.error { border-color:#e0434f; }
         @keyframes slideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeOut { to{opacity:0;transform:translateY(-10px)} }
-        .tutorial-text { font-size:0.6rem; line-height:1.9; margin:18px 0; }
-        .storage-info { font-size:0.5rem; color:#ddd; margin:6px 0; line-height:1.6; }
+        .tutorial-text { font-size:0.55rem; line-height:2; margin:18px 0; color:var(--text-secondary); }
+        .tutorial-text b { color:var(--gold); }
+        .storage-info { font-size:0.5rem; color:var(--text-secondary); margin:6px 0; line-height:1.6; }
         .storage-info .highlight { color:#ffd700; }
         .tab-row { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; justify-content:center; }
-        .tab-btn { background:#2a3a4e; border:2px solid #4a5a6e; color:#fff; padding:5px 8px; font-family:var(--font); font-size:0.4rem; cursor:pointer; }
+        .tab-btn { background:#2a3a4e; border:2px solid #4a5a6e; color:#fff; padding:5px 8px; font-family:var(--font); font-size:0.4rem; cursor:pointer; border-radius:4px; transition: all 0.15s; }
         .tab-btn.active { border-color:var(--gold); background:#3a4a5e; }
         .big-message { font-size:0.65rem; line-height:2; margin:20px 0; }
         .modal-buttons { display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
-        .float-number { position:fixed; pointer-events:none; z-index:1000; font-family:var(--font); font-size:0.6rem; color:#5f5; text-shadow:2px 2px 0 #000; animation:floatUp 1.2s ease-out forwards; }
-        @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-50px)} }
+        .float-number { position:fixed; pointer-events:none; z-index:1000; font-family:var(--font); font-size:0.55rem; color:#0f0; text-shadow:0 0 8px rgba(0,255,0,0.6); animation:floatUp 1.5s ease-out forwards; }
+        @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-60px)} }
         .step-dot { display:inline-block; width:12px; height:12px; border-radius:50%; background:#3a4a5e; margin:0 4px; }
         .step-dot.active { background:var(--gold); }
         .wallet-line {
@@ -114,18 +135,18 @@
         }
         .wallet-line span {
             flex: 1; min-width: 0; white-space: nowrap; overflow-x: auto;
-            font-family: 'Courier New', monospace; font-size: 0.8rem;
+            font-family: 'Courier New', monospace; font-size: 0.7rem;
             color: #ffffff; padding-right: 6px; line-height: 1.4;
         }
         .wallet-line button {
             flex-shrink: 0; width: auto; padding: 6px 12px; font-size: 0.45rem;
-            margin: 0 !important; max-width: 70px; background: #d94040;
-            border: 2px solid #b03030; color: #fff; font-family: var(--font);
-            box-shadow: 2px 2px 0 #000; cursor: pointer;
+            margin: 0 !important; max-width: 70px; background: var(--red);
+            border: 2px solid var(--red-dark); color: #fff; font-family: var(--font);
+            box-shadow: 2px 2px 0 #000; cursor: pointer; border-radius:4px;
         }
         .brl-info { font-size:0.45rem; color:#aaccff; }
         .referral-list { max-height:180px; overflow-y:auto; text-align:left; margin-top:8px; scrollbar-width:thin; }
-        .referral-item { padding:6px 0; border-bottom:1px solid #3a4a5e; display:flex; justify-content:space-between; font-size:0.45rem; }
+        .referral-item { padding:6px 0; border-bottom:1px solid #3a4a5e; display:flex; justify-content:space-between; font-size:0.45rem; color:var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -137,17 +158,14 @@
         <div class="pokeball-logo"></div>
         <div class="loading-title">GRAM<br>CATCHER</div>
         <div class="loading-bar-outer"><div class="loading-bar-inner" id="loadingBar" style="width:0%"></div></div>
-        <div id="loadingText" style="color:#aaa;font-size:0.55rem;">CONECTANDO...</div>
+        <div class="loading-subtitle" id="loadingText">CARREGANDO POKÉDEX...</div>
     </div>
 
     <div class="screen hidden" id="gameScreen">
         <div class="top-bar">
             <div class="ball-indicator" id="ballIndicator"></div>
-            <div class="production-hud" id="productionHud">
-                <div class="prod-day">📦 0.000000 GRAM/dia</div>
-                <div class="prod-sec">⚡ 0.000000 GRAM/s</div>
-            </div>
-            <div class="balance" id="balanceDisplay">💰 0.000000</div>
+            <div class="production-hud" id="productionHud">🏭 0.000000 GRAM/dia</div>
+            <div class="balance" id="balanceDisplay">🪙 0.000000</div>
             <button class="btn-icon" onclick="openShop()" style="width:42px;height:42px;font-size:1.2rem;">🛒</button>
             <button class="btn-icon" onclick="openReferral()" style="width:42px;height:42px;font-size:1.2rem;">👥</button>
         </div>
@@ -165,10 +183,10 @@
     </div>
 
     <div class="modal-overlay hidden" id="tutorialIntroModal">
-        <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel" id="tutorialSkipBtn" onclick="skipTutorial()">Pular</button></div>
+        <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div>
     </div>
     <div class="modal-overlay hidden" id="tutorialModal">
-        <div class="modal-pixel"><h3>🎁 Presente Inicial</h3><p>5 Pokébolas de Iniciante!</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar!</button></div>
+        <div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar Aventura!</button></div>
     </div>
 
     <div class="modal-overlay hidden" id="encounterModal">
@@ -177,18 +195,18 @@
             <canvas id="battleCanvas" class="battle-canvas" width="320" height="280"></canvas>
             <div class="battle-text-box"><span id="battleText"></span></div>
             <div class="ball-grid" id="ballGridContainer" style="padding:10px;"></div>
-            <button class="btn-pixel" id="encounterFleeBtn" onclick="fleeEncounter()" style="margin:10px; background:#555;">🏃 Fugir</button>
+            <button class="btn-pixel" id="encounterFleeBtn" onclick="fleeEncounter()" style="margin:10px; background:#555;border-color:#444;">🏃 Fugir</button>
         </div>
     </div>
     <div class="modal-overlay hidden" id="catchResultModal">
-        <div class="modal-pixel">
+        <div class="modal-pixel golden">
             <button class="modal-close" onclick="closeCatchResult()">✕</button>
-            <img id="resultImg" src="" style="width:128px;height:128px;">
+            <img id="resultImg" src="" style="width:128px;height:128px;image-rendering:pixelated;">
             <h3>🎉 Capturado!</h3>
             <h2 id="resultName" style="color:#ffd700;font-size:0.7rem;"></h2>
             <p class="rarity-badge" id="resultRarity"></p><p id="resultShiny"></p>
-            <p>⚡ Produz <strong id="resultROI"></strong> GRAM em <strong id="resultDays"></strong> dias</p>
-            <p style="color:#5f5;">📦 <span id="resultDaily"></span> GRAM/dia</p>
+            <p>⚡ Produz <strong id="resultROI" style="color:#ffd700;"></strong> GRAM em <strong id="resultDays"></strong> dias</p>
+            <p style="color:#5f5;">🏭 <span id="resultDaily"></span> GRAM/dia</p>
             <div class="modal-buttons"><button class="btn-pixel gold" id="btnCatchOk">OK</button><button class="btn-pixel blue" id="btnVerPC">Ver PC</button></div>
         </div>
     </div>
@@ -198,7 +216,7 @@
             <button class="modal-close" onclick="closeShop()">✕</button><h3>🎒 Loja</h3>
             <p class="brl-info" id="tonPriceDisplay">1 GRAM = R$ ...</p>
             <div id="shopItems" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
-            <button class="btn-pixel" onclick="closeShop()">Fechar</button>
+            <button class="btn-pixel" onclick="closeShop()" style="background:#555;border-color:#444;">Fechar</button>
         </div>
     </div>
 
@@ -210,8 +228,8 @@
             <div class="tab-row" id="boxTabs"></div>
             <div class="pc-box" id="pcBoxGrid"></div>
             <button class="btn-pixel gold small" onclick="collectAll()">💰 Coletar Tudo</button>
-            <button class="btn-pixel blue small" id="btnExpandStorage" onclick="buyStorageExpansion()">📦 Expansão</button>
-            <button class="btn-pixel" onclick="closeCollection()">Fechar</button>
+            <button class="btn-pixel blue small" id="btnExpandStorage" onclick="buyStorageExpansion()">⬆️ Expansão</button>
+            <button class="btn-pixel small" onclick="closeCollection()" style="background:#555;border-color:#444;">Fechar</button>
         </div>
     </div>
 
@@ -226,18 +244,18 @@
             <div class="label-text">Hash da Transação</div><input class="input-pixel" type="text" id="depositTxHash" placeholder="Ex: 0x1234...">
             <div class="label-text">Valor (GRAM)</div><input class="input-pixel" type="text" id="depositAmount" placeholder="Mínimo 0.2 GRAM">
             <button class="btn-pixel green" onclick="submitDeposit()">📤 Enviar Comprovante</button>
-            <p id="depositStatus"></p><button class="btn-pixel" onclick="closeDeposit()">Fechar</button>
+            <p id="depositStatus" style="color:#ffd700;"></p><button class="btn-pixel small" onclick="closeDeposit()" style="background:#555;border-color:#444;">Fechar</button>
         </div>
     </div>
     <div class="modal-overlay hidden" id="withdrawModal">
         <div class="modal-pixel">
             <button class="modal-close" onclick="closeWithdraw()">✕</button><h3>💸 Saque (GRAM)</h3>
-            <p>Saldo: <span id="withdrawBalance">0.000000</span> GRAM</p>
+            <p>Saldo: <span id="withdrawBalance" style="color:#ffd700;">0.000000</span> GRAM</p>
             <div class="label-text">Carteira destino</div><input class="input-pixel" type="text" id="walletAddress" placeholder="Ex: UQ...">
             <div class="label-text">Valor a sacar (GRAM)</div><input class="input-pixel" type="text" id="withdrawAmount" placeholder="Mínimo 2 GRAM">
-            <p>Taxa: 5% | Você receberá: <span id="receiveAmount">0.000000</span> GRAM</p>
+            <p>Taxa: 5% | Você receberá: <span id="receiveAmount" style="color:#0f0;">0.000000</span> GRAM</p>
             <button class="btn-pixel gold" onclick="withdraw()">✅ Solicitar Saque</button>
-            <p id="withdrawStatus"></p><button class="btn-pixel" onclick="closeWithdraw()">Cancelar</button>
+            <p id="withdrawStatus" style="color:#ffd700;"></p><button class="btn-pixel small" onclick="closeWithdraw()" style="background:#555;border-color:#444;">Cancelar</button>
         </div>
     </div>
 
@@ -249,16 +267,16 @@
                 Convide amigos e ganhe <span style="color:#ffd700;">5% de comissão</span> sobre as recargas deles!
             </p>
             <div class="wallet-line" style="margin:10px 0;">
-                <span id="refLink" style="font-size:0.65rem;"></span>
-                <button onclick="copyReferralLink()" style="font-size:0.45rem;">📋 Copiar</button>
+                <span id="refLink" style="font-size:0.6rem;"></span>
+                <button onclick="copyReferralLink()">📋 Copiar</button>
             </div>
             <button class="btn-pixel gold small" onclick="shareReferral()">📤 Compartilhar</button>
             <div style="margin-top:18px;">
                 <h4 style="font-size:0.6rem;">Seus Indicados (<span id="refCount">0</span>)</h4>
                 <div class="referral-list" id="referralList"></div>
-                <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission">0.000000 GRAM</strong></p>
+                <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission" style="color:#ffd700;">0.000000 GRAM</strong></p>
             </div>
-            <button class="btn-pixel" onclick="closeReferral()">Fechar</button>
+            <button class="btn-pixel small" onclick="closeReferral()" style="background:#555;border-color:#444;">Fechar</button>
         </div>
     </div>
 </div>
@@ -285,6 +303,7 @@ class SoundFX {
 }
 const SOUND = new SoundFX();
 function showToast(msg,type='') { const c=document.getElementById('toastContainer'), t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),3000); }
+function showFloatNumber(x,y,text) { const el=document.createElement('div'); el.className='float-number'; el.textContent=text; el.style.left=x+'px'; el.style.top=y+'px'; document.body.appendChild(el); setTimeout(()=>el.remove(),1500); }
 
 // ==================== COTAÇÃO ====================
 let tonPriceBRL = 27.50;
@@ -406,13 +425,10 @@ function updateBallIndicator() {
     document.getElementById('ballIndicator').innerHTML = Object.entries(ballDefs).map(([k,b])=>`<img src="${ITEM_SPRITE}${b.item}" style="width:20px;height:20px;">${i[k]}`).join('');
 }
 function updateBalance() {
-    document.getElementById('balanceDisplay').textContent = `💰 ${state.balance.toFixed(6)}`;
+    document.getElementById('balanceDisplay').textContent = `🪙 ${state.balance.toFixed(6)}`;
 }
 function updateProductionHUD() {
-    document.getElementById('productionHud').innerHTML = `
-        <div class="prod-day">📦 ${getProductionPerDay().toFixed(6)} GRAM/dia</div>
-        <div class="prod-sec">⚡ ${getProductionPerSecond().toFixed(6)} GRAM/s</div>
-    `;
+    document.getElementById('productionHud').textContent = `🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia`;
 }
 
 function copyWallet() {
@@ -422,13 +438,17 @@ function copyWallet() {
 // ==================== TUTORIAL ====================
 let tutorialStep = 0;
 const tutorialSteps = [
-    { title:'Bem-vindo ao Gram Catcher!', text:'Capture Pokémon e ganhe <span style="color:#5f5;">GRAM</span> automaticamente.<br><br><small style="color:#ffd700;">1 GRAM = 1 TON</small>' },
+    { title:'Bem-vindo ao Gram Catcher!', text:'Capture Pokémon e ganhe <b>GRAM</b> automaticamente.<br><br><small style="color:#aaccff;">1 GRAM = 1 TON</small>' },
     { title:'🎲 Raridades', text:'<b>Comum</b> → 0.4 GRAM em 60 dias<br><b>Raro</b> → 1.0 GRAM em 30 dias<br><b>Épico</b> → 2.0 GRAM em 25 dias<br><b>Lendário</b> → 4.0 GRAM em 19 dias' },
-    { title:'🔴 Pokébolas', text:'Compre Pokébolas na <span style="color:#ffd700;">Loja</span> com seus GRAM minerados.' },
-    { title:'📦 PC Storage', text:'Os Pokémon capturados produzem GRAM automaticamente. Colete os ganhos quando quiser!' }
+    { title:'🔴 Pokébolas', text:'Compre Pokébolas na <b>Loja 🛒</b> com seus GRAM minerados.<br><br><small style="color:#aaa;">Diferentes bolas têm diferentes chances!</small>' },
+    { title:'📦 PC Storage', text:'Os Pokémon capturados produzem GRAM automaticamente.<br><br>Colete os ganhos quando quiser em <b>PC Storage 🖥️</b>!' }
 ];
 
-function startIntroTutorial() { tutorialStep = 0; renderTutorialStep(); document.getElementById('tutorialIntroModal').classList.remove('hidden'); }
+function startIntroTutorial() {
+    tutorialStep = 0;
+    renderTutorialStep();
+    document.getElementById('tutorialIntroModal').classList.remove('hidden');
+}
 function renderTutorialStep() {
     const s = tutorialSteps[tutorialStep];
     document.getElementById('tutorialStepContent').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px;">${s.title}</h3><p class="tutorial-text">${s.text}</p>`;
@@ -437,13 +457,27 @@ function renderTutorialStep() {
     btn.textContent = tutorialStep < tutorialSteps.length-1 ? 'Próximo ▶' : 'Concluir 🎉';
 }
 function nextTutorialStep() {
-    if (tutorialStep < tutorialSteps.length-1) { tutorialStep++; renderTutorialStep(); }
-    else { document.getElementById('tutorialIntroModal').classList.add('hidden'); state.tutorialDone = true; saveState(); document.getElementById('tutorialModal').classList.remove('hidden'); }
+    if (tutorialStep < tutorialSteps.length-1) {
+        tutorialStep++;
+        renderTutorialStep();
+    } else {
+        document.getElementById('tutorialIntroModal').classList.add('hidden');
+        state.tutorialDone = true;
+        saveState();
+        document.getElementById('tutorialModal').classList.remove('hidden');
+    }
 }
-function skipTutorial() { document.getElementById('tutorialIntroModal').classList.add('hidden'); state.tutorialDone = true; saveState(); document.getElementById('tutorialModal').classList.remove('hidden'); }
+function skipTutorial() {
+    document.getElementById('tutorialIntroModal').classList.add('hidden');
+    state.tutorialDone = true;
+    saveState();
+    document.getElementById('tutorialModal').classList.remove('hidden');
+}
 function finishTutorial() {
     document.getElementById('tutorialModal').classList.add('hidden');
-    if (state.tutorialBalls > 0) showToast(`Você recebeu ${state.tutorialBalls} Pokébola(s) de iniciante!`, 'success');
+    if (state.tutorialBalls > 0) {
+        showToast(`🎁 ${state.tutorialBalls} Pokébolas de iniciante recebidas!`, 'success');
+    }
     updateBallIndicator();
 }
 
@@ -464,9 +498,9 @@ function isInGrass(x,y){ return state.grassPatches.some(p=>x>=p.x&&x<=p.x+p.w&&y
 function drawMap(ctx,w,h){
     const camX=state.playerX-w/2, camY=state.playerY-h/2;
     ctx.save(); ctx.translate(-camX,-camY);
-    ctx.fillStyle='#9cc86a'; ctx.fillRect(0,0,state.mapWidth,state.mapHeight);
+    ctx.fillStyle='#8cc850'; ctx.fillRect(0,0,state.mapWidth,state.mapHeight);
     ctx.fillStyle='#e8dcc0'; ctx.fillRect(0,state.mapHeight*0.44,state.mapWidth,32);
-    state.grassPatches.forEach(p=>{ for(let gx=p.x;gx<p.x+p.w;gx+=7) for(let gy=p.y;gy<p.y+p.h;gy+=7) ctx.fillStyle=((gx+gy)%14<7)?'#5a9c3f':'#4a8c2f', ctx.fillRect(gx,gy,7,7); });
+    state.grassPatches.forEach(p=>{ for(let gx=p.x;gx<p.x+p.w;gx+=7) for(let gy=p.y;gy<p.y+p.h;gy+=7) ctx.fillStyle=((gx+gy)%14<7)?'#7ab648':'#6aa038', ctx.fillRect(gx,gy,7,7); });
     const bx=state.playerX, by=state.playerY+(state.joystickActive&&state.frameCounter%8<4?2:0);
     ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(bx, by+10, 14, 7, 0, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle='#c8a050'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(bx, by-8, 12, 0, Math.PI*2); ctx.stroke();
@@ -730,19 +764,19 @@ function updateCollectionUI(){
             const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400);
             const claimable = Math.max(0, earned - c.claimed);
             const progress = Math.min(100, (earned / c.roiTotal)*100);
-            slot.innerHTML = `<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">📦 ${c.dailyProduction.toFixed(6)}/dia</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;
+            slot.innerHTML = `<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">🏭 ${c.dailyProduction.toFixed(6)}/dia</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;
             const idx = start + i;
             slot.onclick=()=>{ claimCreature(idx); };
         } else slot.innerHTML='<span style="opacity:0.2;">∅</span>';
         grid.appendChild(slot);
     }
-    document.getElementById('storageProduction').innerHTML = `⚡ Produção total: <span class="highlight">📦 ${getProductionPerDay().toFixed(6)} GRAM/dia</span> | ⚡ ${getProductionPerSecond().toFixed(6)} GRAM/s`;
+    document.getElementById('storageProduction').innerHTML = `⚡ Produção total: <span class="highlight">🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia</span> | ⚡ ${getProductionPerSecond().toFixed(6)} GRAM/s`;
     document.getElementById('storageTotal').innerHTML = `💰 Disponível para coleta: <span class="highlight">${getAvailableToClaim().toFixed(6)} GRAM</span>`;
     const tabs=document.getElementById('boxTabs'); tabs.innerHTML='';
     for(let i=0;i<state.storageBoxes;i++){ const btn=document.createElement('button'); btn.className='tab-btn'+(i===state.currentBox?' active':''); btn.textContent=`Box ${i+1}`; btn.onclick=()=>{ state.currentBox=i; updateCollectionUI(); }; tabs.appendChild(btn); }
     const expansionCost = state.storageBoxes * 10;
     document.getElementById('btnExpandStorage').style.display = state.storageBoxes >= 11 ? 'none' : 'block';
-    document.getElementById('btnExpandStorage').textContent = `📦 Expansão (${expansionCost} GRAM)`;
+    document.getElementById('btnExpandStorage').textContent = `⬆️ Expansão (${expansionCost} GRAM)`;
 }
 async function claimCreature(idx){
     try {
@@ -757,6 +791,11 @@ async function claimCreature(idx){
             state.collection[idx].claimed += data.collected;
             updateBalance();
             showToast(`+${data.collected.toFixed(6)} GRAM coletado!`,'success');
+            const slot = document.querySelectorAll('.pc-slot')[idx % 12];
+            if(slot){
+                const rect = slot.getBoundingClientRect();
+                showFloatNumber(rect.left + rect.width/2, rect.top, '+' + data.collected.toFixed(6));
+            }
         }
         updateCollectionUI();
     } catch(e) { showToast(e.message,'error'); }
@@ -777,7 +816,7 @@ async function collectAll(){
                 c.claimed = earned;
             });
             updateBalance();
-            showToast(`Coletado ${data.collected.toFixed(6)} GRAM!`,'success');
+            showToast(`💰 ${data.collected.toFixed(6)} GRAM coletado!`,'success');
         } else showToast('Nada para coletar','error');
         updateCollectionUI();
     } catch(e) { showToast(e.message,'error'); }
@@ -794,7 +833,7 @@ async function buyStorageExpansion(){
         state.storageBoxes = data.storageBoxes;
         updateBalance();
         updateCollectionUI();
-        showToast(`Expansão comprada! Boxes: ${state.storageBoxes}`,'success');
+        showToast(`⬆️ Expansão comprada! Boxes: ${state.storageBoxes}`,'success');
     } catch(e) { showToast(e.message,'error'); }
 }
 function closeCollection(){ resetJoystick(); document.getElementById('collectionModal').classList.add('hidden'); }
@@ -943,9 +982,9 @@ function goToScreen(id) {
 
 window.addEventListener('load', ()=>{
     document.getElementById('loadingBar').style.width='100%';
-    document.getElementById('loadingText').textContent='PRONTO!';
+    document.getElementById('loadingText').textContent='UM MUNDO DE AVENTURAS TE ESPERA!';
     setTimeout(()=>{ document.getElementById('loadingScreen').classList.add('hidden'); startGame(); },800);
 });
 </script>
 </body>
-</html>
+    </html>
