@@ -861,4 +861,106 @@ async function withdraw(){
     try {
         const res = await fetch(API_URL + '/api/withdraw', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json
+            headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+            body: JSON.stringify({ amount: amt, walletAddress: wallet })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            state.balance = data.newBalance;
+            updateBalance();
+            showToast('Saque solicitado! Horário permitido: 08h-20h BRT.', 'success');
+            document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.';
+        } else {
+            showToast(data.error || 'Erro no saque', 'error');
+        }
+    } catch (e) { showToast('Erro de conexão', 'error'); }
+}
+function closeWithdraw(){ document.getElementById('withdrawModal').classList.add('hidden'); }
+
+// ==================== REFERRAL ====================
+async function openReferral() {
+    try {
+        const res = await fetch(API_URL+'/api/referral', { headers:{'Authorization':getAuthHeader()} });
+        if (!res.ok) throw new Error('Erro ' + res.status);
+        const data = await res.json();
+        document.getElementById('refLink').textContent = data.referralLink;
+        document.getElementById('totalCommission').textContent = data.totalCommission.toFixed(2) + ' GRAM';
+        document.getElementById('refCount').textContent = data.referrals.length;
+        const listEl = document.getElementById('referralList');
+        listEl.innerHTML = data.referrals.map(r => `
+            <div class="referral-item">
+                <span>${r.username || r.telegramId}</span>
+                <span>💰 ${(r.totalDeposited||0).toFixed(1)} GRAM | +${(r.commissionEarned||0).toFixed(2)} GRAM</span>
+            </div>
+        `).join('') || '<p style="font-size:0.5rem;">Nenhum indicado ainda.</p>';
+        document.getElementById('referralModal').classList.remove('hidden');
+    } catch(e) {
+        showToast('Erro ao carregar referral', 'error');
+    }
+}
+function copyReferralLink() {
+    navigator.clipboard.writeText(document.getElementById('refLink').textContent)
+        .then(() => showToast('Link copiado!', 'success'));
+}
+function shareReferral() {
+    const link = document.getElementById('refLink').textContent;
+    if (navigator.share) {
+        navigator.share({ title: 'Gram Catcher', text: 'Jogue e ganhe GRAM!', url: link });
+    } else {
+        copyReferralLink();
+        showToast('Link copiado! Compartilhe com seus amigos.', 'success');
+    }
+}
+function closeReferral() { document.getElementById('referralModal').classList.add('hidden'); }
+
+// ==================== JOYSTICK + TECLADO ====================
+const keys = {};
+(function(){
+    const zone = document.getElementById('joystickZone'), thumb = document.getElementById('joystickThumb');
+    let active = false, currentTouchId = null;
+    function isInputFocused() { const el=document.activeElement; return el && (el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA'||el.isContentEditable); }
+    function updateFromInput(dx,dy,maxDist=36){ if(!state.gameStarted||state.isEncounterActive) return; state.joystickDX=dx; state.joystickDY=dy; state.joystickActive=true; thumb.style.transform=`translate(calc(-50% + ${dx*maxDist}px), calc(-50% + ${dy*maxDist}px))`; }
+    function resetInput(){ state.joystickActive=false; state.joystickDX=0; state.joystickDY=0; thumb.style.transform='translate(-50%,-50%)'; }
+    function handleStart(e){ if(!state.gameStarted||state.isEncounterActive||isInputFocused()) return; e.preventDefault(); if(e.touches) currentTouchId=e.touches[0].identifier; active=true; handleMove(e); }
+    function handleMove(e){ if(!active) return; e.preventDefault(); let clientX,clientY; if(e.touches){ for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ clientX=e.touches[i].clientX; clientY=e.touches[i].clientY; break; } } if(clientX===undefined) return; } else { clientX=e.clientX; clientY=e.clientY; } const rect=zone.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2; let dx=clientX-cx, dy=clientY-cy; const dist=Math.hypot(dx,dy), maxDist=36; if(dist>0.01){ dx=(dx/dist)*Math.min(dist,maxDist); dy=(dy/dist)*Math.min(dist,maxDist); } updateFromInput(dx/maxDist, dy/maxDist); }
+    function handleEnd(e){ if(!active) return; if(e.touches){ let found=false; for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ found=true; break; } } if(found) return; } active=false; currentTouchId=null; resetInput(); }
+    zone.addEventListener('touchstart',handleStart,{passive:false}); zone.addEventListener('touchmove',handleMove,{passive:false}); zone.addEventListener('touchend',handleEnd); zone.addEventListener('touchcancel',handleEnd);
+    zone.addEventListener('mousedown',handleStart); window.addEventListener('mousemove',(e)=>{ if(active) handleMove(e); }); window.addEventListener('mouseup',handleEnd);
+    window.addEventListener('keydown', (e) => { if(isInputFocused()) return; if(!state.gameStarted||state.isEncounterActive) return; keys[e.key]=true; e.preventDefault(); let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } });
+    window.addEventListener('keyup', (e) => { if(isInputFocused()) return; keys[e.key]=false; if(!keys['ArrowLeft']&&!keys['a']&&!keys['ArrowRight']&&!keys['d']&&!keys['ArrowUp']&&!keys['w']&&!keys['ArrowDown']&&!keys['s']){ resetInput(); } else { let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } } });
+})();
+
+// ==================== INICIALIZAÇÃO ====================
+async function startGame() {
+    state.username = currentUser.first_name || 'Tamer';
+    await loadGame();
+    updateBalance(); updateBallIndicator(); updateProductionHUD();
+    goToScreen('gameScreen');
+    if (saveInterval) clearInterval(saveInterval);
+    saveInterval = setInterval(saveState, 30000);
+}
+function goToScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => { s.classList.add('hidden'); s.classList.remove('active'); });
+    const target = document.getElementById(id);
+    if (target) { target.classList.remove('hidden'); target.classList.add('active'); }
+    if (id === 'gameScreen') {
+        initGameCanvas();
+        document.getElementById('gameControls').classList.add('visible');
+        state.gameStarted = true;
+        if (!state.animationId) startGameLoop();
+        if (!state.tutorialDone) {
+            setTimeout(() => startIntroTutorial(), 500);
+        }
+    } else {
+        if (state.animationId) { cancelAnimationFrame(state.animationId); state.animationId = null; }
+    }
+}
+
+window.addEventListener('load', ()=>{
+    document.getElementById('loadingBar').style.width='100%';
+    document.getElementById('loadingText').textContent='PRONTO!';
+    setTimeout(()=>{ document.getElementById('loadingScreen').classList.add('hidden'); startGame(); },800);
+});
+</script>
+</body>
+</html>
