@@ -160,7 +160,7 @@
         <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel" id="tutorialSkipBtn" onclick="skipTutorial()">Pular</button></div>
     </div>
     <div class="modal-overlay hidden" id="tutorialModal">
-        <div class="modal-pixel"><h3>🎁 Tutorial</h3><p>Bem-vindo! Agora é com você.</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar!</button></div>
+        <div class="modal-pixel"><h3>🎁 Presente Inicial</h3><p>5 Pokébolas de Iniciante!</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar!</button></div>
     </div>
 
     <div class="modal-overlay hidden" id="encounterModal">
@@ -242,9 +242,7 @@
             <button class="btn-pixel gold small" onclick="shareReferral()">📤 Compartilhar</button>
             <div style="margin-top:18px;">
                 <h4 style="font-size:0.6rem;">Seus Indicados (<span id="refCount">0</span>)</h4>
-                <div class="referral-list" id="referralList">
-                    <!-- JS preenche -->
-                </div>
+                <div class="referral-list" id="referralList"></div>
                 <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission">0.00 GRAM</strong></p>
             </div>
             <button class="btn-pixel" onclick="closeReferral()">Fechar</button>
@@ -365,11 +363,12 @@ async function loadGame() {
         const r = await fetch(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`, {
             headers:{'Authorization':getAuthHeader()}
         });
+        if (!r.ok) throw new Error('Erro ' + r.status);
         const d = await r.json();
         if (d.exists) {
             state.balance = d.balance;
             state.inventory = d.inventory;
-            state.collection = d.collection;   // ← corrigido para 'collection'
+            state.collection = d.collection || [];
             state.storageBoxes = d.storageBoxes;
             state.tutorialBalls = d.tutorialBalls;
             state.tutorialActive = d.tutorialActive;
@@ -377,6 +376,7 @@ async function loadGame() {
         }
     } catch(e) {
         showToast('Erro ao carregar dados', 'error');
+        console.error(e);
     }
 }
 
@@ -424,17 +424,21 @@ function nextTutorialStep() {
         document.getElementById('tutorialIntroModal').classList.add('hidden');
         state.tutorialDone = true;
         saveState();
-        setTimeout(() => document.getElementById('tutorialModal').classList.remove('hidden'), 300);
+        document.getElementById('tutorialModal').classList.remove('hidden');
     }
 }
 function skipTutorial() {
     document.getElementById('tutorialIntroModal').classList.add('hidden');
     state.tutorialDone = true;
     saveState();
-    setTimeout(() => document.getElementById('tutorialModal').classList.remove('hidden'), 300);
+    document.getElementById('tutorialModal').classList.remove('hidden');
 }
 function finishTutorial() {
     document.getElementById('tutorialModal').classList.add('hidden');
+    if (state.tutorialBalls > 0) {
+        showToast(`Você recebeu ${state.tutorialBalls} Pokébola(s) de iniciante!`, 'success');
+    }
+    updateBallIndicator();
 }
 
 // ==================== CANVAS E MAPA ====================
@@ -504,7 +508,7 @@ function processJoystickMovement() {
     }
 }
 
-// ==================== ENCONTRO E BATALHA (server-side) ====================
+// ==================== ENCONTRO E BATALHA ====================
 let battleState={phase:'init',timer:0,idleTime:0,shakes:0,success:false,encounterData:null,animId:null};
 
 function setEncounterButtonsEnabled(enabled) {
@@ -855,6 +859,7 @@ function closeWithdraw(){ document.getElementById('withdrawModal').classList.add
 async function openReferral() {
     try {
         const res = await fetch(API_URL+'/api/referral', { headers:{'Authorization':getAuthHeader()} });
+        if (!res.ok) throw new Error('Erro ' + res.status);
         const data = await res.json();
         document.getElementById('refLink').textContent = data.referralLink;
         document.getElementById('totalCommission').textContent = data.totalCommission.toFixed(2) + ' GRAM';
@@ -867,7 +872,9 @@ async function openReferral() {
             </div>
         `).join('') || '<p style="font-size:0.5rem;">Nenhum indicado ainda.</p>';
         document.getElementById('referralModal').classList.remove('hidden');
-    } catch(e) { showToast('Erro ao carregar referral', 'error'); }
+    } catch(e) {
+        showToast('Erro ao carregar referral', 'error');
+    }
 }
 function copyReferralLink() {
     navigator.clipboard.writeText(document.getElementById('refLink').textContent)
