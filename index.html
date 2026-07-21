@@ -73,9 +73,12 @@
         .shiny-charm-hud {
             font-size:0.4rem; color:#ff79c6; background:#1a0a1a; padding:6px 10px;
             border:2px solid #ff79c6; text-align:center; border-radius:4px;
-            text-shadow:0 0 8px rgba(255,121,198,0.5); animation: shinyPulse 2s infinite;
+            text-shadow:0 0 8px rgba(255,121,198,0.5);
         }
-        @keyframes shinyPulse { 0%,100%{box-shadow:0 0 5px rgba(255,121,198,0.3)} 50%{box-shadow:0 0 15px rgba(255,121,198,0.6)} }
+        @keyframes shinyPulse { 
+            0%,100%{box-shadow:0 0 5px rgba(255,121,198,0.3)} 
+            50%{box-shadow:0 0 20px rgba(255,121,198,0.8),0 0 40px rgba(255,121,198,0.4)} 
+        }
         .map-container { flex:1; position:relative; overflow:hidden; background:#2d5a24; touch-action:none; }
         canvas#gameCanvas { width:100%; height:100%; image-rendering:pixelated; }
         .game-controls { position:absolute; inset:0; pointer-events:none; z-index:20; opacity:0; transition:0.5s; }
@@ -124,7 +127,8 @@
         .tutorial-text { font-size:0.55rem; line-height:2; margin:18px 0; color:var(--text-secondary); }
         .tutorial-text b { color:var(--gold); }
         .storage-info { font-size:0.5rem; color:var(--text-secondary); margin:6px 0; line-height:1.6; }
-        .storage-info .highlight { color:#ffd700; }
+        .storage-info .highlight { color:#0f0; }
+        .storage-info .highlight-prod { color:#ffd700; }
         .tab-row { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; justify-content:center; }
         .tab-btn { background:#2a3a4e; border:2px solid #4a5a6e; color:#fff; padding:5px 8px; font-family:var(--font); font-size:0.4rem; cursor:pointer; border-radius:4px; transition: all 0.15s; }
         .tab-btn.active { border-color:var(--gold); background:#3a4a5e; }
@@ -396,47 +400,22 @@ function getAvailableToClaim() {
         return sum + Math.max(0, earned - c.claimed);
     }, 0);
 }
-function getWithdrawFee(amount) {
-    if (amount > 200) return 0.02;
-    if (amount > 50) return 0.03;
-    if (amount > 10) return 0.04;
-    return 0.05;
-}
+function getWithdrawFee(amount) { if (amount > 200) return 0.02; if (amount > 50) return 0.03; if (amount > 10) return 0.04; return 0.05; }
 function isShinyCharmActive() { return state.shinyCharmEnd > Date.now(); }
 function getShinyCharmTimeLeft() { return Math.max(0, Math.ceil((state.shinyCharmEnd - Date.now()) / 1000)); }
 
 // ==================== API ====================
-async function saveState() {
-    try { await fetch(API_URL+'/api/player/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({tutorialBalls:state.tutorialBalls,tutorialActive:state.tutorialActive,tutorialDone:state.tutorialDone})}); } catch(e) {}
-}
+async function saveState() { try { await fetch(API_URL+'/api/player/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({tutorialBalls:state.tutorialBalls,tutorialActive:state.tutorialActive,tutorialDone:state.tutorialDone})}); } catch(e) {} }
 let saveInterval = null;
 
 async function loadGame() {
-    try {
-        const startParam = tg.initDataUnsafe?.start_param || '';
-        const r = await fetch(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`,{headers:{'Authorization':getAuthHeader()}});
-        if (!r.ok) throw new Error('Erro ' + r.status);
-        const d = await r.json();
-        if (d.exists) { state.balance=d.balance; state.inventory=d.inventory; state.collection=d.collection||[]; state.storageBoxes=d.storageBoxes; state.tutorialBalls=d.tutorialBalls; state.tutorialActive=d.tutorialActive; state.tutorialDone=d.tutorialDone; }
-    } catch(e) { showToast('Erro ao carregar dados', 'error'); console.error(e); }
+    try { const startParam = tg.initDataUnsafe?.start_param || ''; const r = await fetch(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`,{headers:{'Authorization':getAuthHeader()}}); if (!r.ok) throw new Error('Erro ' + r.status); const d = await r.json(); if (d.exists) { state.balance=d.balance; state.inventory=d.inventory; state.collection=d.collection||[]; state.storageBoxes=d.storageBoxes; state.tutorialBalls=d.tutorialBalls; state.tutorialActive=d.tutorialActive; state.tutorialDone=d.tutorialDone; } } catch(e) { showToast('Erro ao carregar dados', 'error'); console.error(e); }
 }
 
 function updateBallIndicator() { const i=state.inventory; document.getElementById('ballIndicator').innerHTML=Object.entries(ballDefs).map(([k,b])=>`<img src="${ITEM_SPRITE}${b.item}" style="width:20px;height:20px;">${i[k]}`).join(''); }
 function updateBalance() { document.getElementById('balanceDisplay').textContent=`🪙 ${state.balance.toFixed(6)}`; }
 function updateProductionHUD() { document.getElementById('productionHud').textContent=`🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia`; }
-function updateShinyCharmHUD() {
-    const el = document.getElementById('shinyCharmHud');
-    if (isShinyCharmActive()) {
-        const sec = getShinyCharmTimeLeft();
-        const h = Math.floor(sec/3600);
-        const m = Math.floor((sec%3600)/60);
-        const s = sec%60;
-        el.textContent = `✨ ${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        el.classList.remove('hidden');
-    } else {
-        el.classList.add('hidden');
-    }
-}
+function updateShinyCharmHUD() { const el = document.getElementById('shinyCharmHud'); if (isShinyCharmActive()) { const sec = getShinyCharmTimeLeft(); const h = Math.floor(sec/3600); const m = Math.floor((sec%3600)/60); const s = sec%60; el.textContent = `✨ ${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; el.classList.remove('hidden'); el.style.animation = 'shinyPulse 0.8s infinite'; } else { el.classList.add('hidden'); el.style.animation = ''; } }
 
 function copyWallet() { navigator.clipboard.writeText(document.getElementById('walletAddressText').textContent).then(()=>showToast('Carteira copiada!','success')).catch(()=>showToast('Falha ao copiar','error')); }
 
@@ -445,7 +424,7 @@ let tutorialStep=0;
 const tutorialSteps=[
     { title:'Bem-vindo ao Gram Catcher!', text:'Capture Pokémon e ganhe <b style="color:#5f5;">GRAM</b> automaticamente.<br><br><small style="color:#aaccff;">1 GRAM = 1 TON</small>' },
     { title:'🎲 Raridades', text:'<b style="color:#8a8a8a;">Comum</b> → 0.4 GRAM em 60 dias<br><b style="color:#4a90d9;">Raro</b> → 1.0 GRAM em 30 dias<br><b style="color:#9b59b6;">Épico</b> → 2.0 GRAM em 25 dias<br><b style="color:#f1c40f;">Lendário</b> → 4.0 GRAM em 19 dias' },
-    { title:'✨ Shiny', text:'Alguns Pokémon possuem <b style="color:#ff79c6;">cores diferentes</b> e produzem o <b style="color:#ffd700;">dobro</b> de GRAM!<br><br><small style="color:#aaa;">São extremamente raros...</small>' },
+    { title:'✨ Shiny', text:'Alguns Pokémon possuem <b style="color:#ff79c6;">cores diferentes</b> e produzem o <b style="color:#ffd700;">dobro</b> de GRAM!<br><br><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shiny-charm.png" style="width:48px;height:48px;image-rendering:pixelated;"><br><span style="font-size:0.45rem;">Compre o <b style="color:#ff79c6;">Shiny Charm</b> na Loja<br>para dobrar suas chances!<br><br>⏱️ Dura 3 horas<br>🪙 Custa 1 GRAM</span>' },
     { title:'🔴 Pokébolas', text:'Compre Pokébolas na <b style="color:#ffd700;">Loja 🛒</b> com seus GRAM minerados.<br><br><small style="color:#aaa;">Diferentes bolas têm diferentes chances!</small>' },
     { title:'📦 PC Storage', text:'Os Pokémon capturados produzem GRAM automaticamente.<br><br>Colete os ganhos quando quiser em <b style="color:#ffd700;">PC Storage 🖥️</b>!' }
 ];
@@ -463,21 +442,20 @@ function generateGrass(){state.grassPatches=Array.from({length:20},()=>({x:Math.
 function isInGrass(x,y){return state.grassPatches.some(p=>x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h);}
 
 function drawShinySign(ctx,camX,camY,w,h){
-    const signX=state.mapWidth*0.82-camX;
-    const signY=state.mapHeight*0.12-camY;
-    if(signX>-80&&signX<w+80&&signY>-50&&signY<h+50){
-        ctx.fillStyle='#5a3a1a';
-        ctx.fillRect(signX-2,signY+15,4,25);
-        ctx.fillStyle='#8B4513';
-        ctx.fillRect(signX-35,signY-18,70,33);
-        ctx.strokeStyle='#000';
-        ctx.lineWidth=2;
-        ctx.strokeRect(signX-35,signY-18,70,33);
-        ctx.fillStyle='#ffd700';
-        ctx.font='bold 8px "Press Start 2P"';
+    const signX=state.mapWidth*0.80-camX;
+    const signY=state.mapHeight*0.10-camY;
+    const charmActive = isShinyCharmActive();
+    if(signX>-110&&signX<w+110&&signY<-70&&signY<h+70){
+        ctx.fillStyle='#5a3a1a'; ctx.fillRect(signX-2,signY+22,4,30);
+        const signWidth = 100; const signHeight = charmActive ? 55 : 45;
+        ctx.fillStyle='#8B4513'; ctx.fillRect(signX-signWidth/2,signY-18,signWidth,signHeight);
+        if(charmActive){ ctx.strokeStyle='#ffd700'; ctx.lineWidth=3; ctx.shadowColor='#ffd700'; ctx.shadowBlur=12+Math.sin(Date.now()/500)*4; }
+        else { ctx.strokeStyle='#000'; ctx.lineWidth=2; ctx.shadowBlur=0; }
+        ctx.strokeRect(signX-signWidth/2,signY-18,signWidth,signHeight); ctx.shadowBlur=0;
         ctx.textAlign='center';
-        ctx.fillText('✨ = 2x',signX,signY+2);
-        ctx.fillText('GRAM',signX,signY+15);
+        ctx.fillStyle='#ffd700'; ctx.font='bold 7px "Press Start 2P"';
+        ctx.fillText('Pokémon Shiny',signX,signY-2); ctx.fillText('rendem 2x mais',signX,signY+12); ctx.fillText('GRAM! ✨',signX,signY+26);
+        if(charmActive){ ctx.fillStyle='#ff79c6'; ctx.font='bold 5px "Press Start 2P"'; ctx.fillText('⏱️ Shiny Charm ATIVO',signX,signY+42); }
     }
 }
 
@@ -492,6 +470,7 @@ function drawMap(ctx,w,h){
     ctx.strokeStyle='#c8a050';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx,by-8,12,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(bx,by-8,10,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#5a3a1a';ctx.fillRect(bx+10,by-2,4,16);ctx.fillStyle='#8a5a3a';ctx.fillRect(bx+11,by-4,2,20);
+    if(isShinyCharmActive()){ const time=Date.now()/200; for(let i=0;i<6;i++){ const angle=(time+i*Math.PI/3)%(Math.PI*2); const dist=20+Math.sin(time*3+i)*5; const px=state.playerX+Math.cos(angle)*dist; const py=state.playerY+Math.sin(angle)*dist-8; const alpha=0.3+Math.sin(time*2+i)*0.2; ctx.fillStyle=`rgba(255,121,198,${alpha})`; ctx.beginPath(); ctx.arc(px-camX,py-camY,3,0,Math.PI*2); ctx.fill(); } }
     drawShinySign(ctx,camX,camY,w,h);
     ctx.restore();
 }
@@ -516,71 +495,16 @@ function closeEncounter(){document.getElementById('encounterModal').classList.ad
 function closeCatchResult(){resetJoystick();document.getElementById('catchResultModal').classList.add('hidden');}
 
 // ==================== LOJA ====================
-let shopTab = 'balls';
-
-function switchShopTab(tab) {
-    shopTab = tab;
-    document.getElementById('tabBalls').classList.toggle('active', tab === 'balls');
-    document.getElementById('tabBuffs').classList.toggle('active', tab === 'buffs');
-    renderShopItems();
-}
-
-function renderShopItems() {
-    const container = document.getElementById('shopItems');
-    if (shopTab === 'balls') {
-        container.innerHTML = Object.entries(ballDefs).map(([k,b])=>`<div class="ball-slot"><img src="${ITEM_SPRITE}${b.item}" style="width:40px;height:40px;"><b>${b.name}</b><span>${b.cost.toFixed(2)} GRAM</span><span class="brl-info">≈ R$ ${(b.cost*tonPriceBRL).toFixed(2)}</span><button class="btn-pixel blue small" onclick="buyBall('${k}')">Comprar</button></div>`).join('');
-    } else {
-        container.innerHTML = Object.entries(buffDefs).map(([k,b])=>`<div class="ball-slot" style="border-color:#ff79c6;"><img src="${ITEM_SPRITE}${b.item}" style="width:40px;height:40px;"><b>${b.name}</b><span>${b.cost.toFixed(2)} GRAM</span><span class="brl-info">⏱️ 3 horas</span><small style="color:#ff79c6;">${b.description}</small><button class="btn-pixel small" style="background:#9b59b6;border-color:#7b3fa0;" onclick="buyBuff('${k}')">Comprar</button></div>`).join('');
-    }
-}
-
-function openShop(){
-    shopTab = 'balls';
-    document.getElementById('tabBalls').classList.add('active');
-    document.getElementById('tabBuffs').classList.remove('active');
-    renderShopItems();
-    document.getElementById('shopModal').classList.remove('hidden');
-}
-
-async function buyBall(k){
-    try {
-        const res = await fetch(API_URL+'/api/buy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({ballType:k})});
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        state.balance = data.newBalance; state.inventory = data.newInventory;
-        updateBalance(); updateBallIndicator();
-        SOUND.transaction();
-        showToast(`${ballDefs[k].name} comprada!`,'success');
-        renderShopItems();
-    } catch(e) { showToast(e.message,'error'); }
-}
-
-async function buyBuff(k) {
-    if (k === 'shinyCharm') {
-        const cost = buffDefs.shinyCharm.cost;
-        if (state.balance < cost) { showToast('Saldo insuficiente', 'error'); return; }
-        state.balance -= cost;
-        state.shinyCharmEnd = Date.now() + buffDefs.shinyCharm.duration;
-        updateBalance();
-        updateShinyCharmHUD();
-        SOUND.transaction();
-        showToast('✨ Shiny Charm ativado! 3 horas de caça!', 'success');
-        renderShopItems();
-    }
-}
-
+function switchShopTab(tab) { shopTab = tab; document.getElementById('tabBalls').classList.toggle('active', tab === 'balls'); document.getElementById('tabBuffs').classList.toggle('active', tab === 'buffs'); renderShopItems(); }
+function renderShopItems() { const container = document.getElementById('shopItems'); if (shopTab === 'balls') { container.innerHTML = Object.entries(ballDefs).map(([k,b])=>`<div class="ball-slot"><img src="${ITEM_SPRITE}${b.item}" style="width:40px;height:40px;"><b>${b.name}</b><span>${b.cost.toFixed(2)} GRAM</span><span class="brl-info">≈ R$ ${(b.cost*tonPriceBRL).toFixed(2)}</span><button class="btn-pixel blue small" onclick="buyBall('${k}')">Comprar</button></div>`).join(''); } else { container.innerHTML = Object.entries(buffDefs).map(([k,b])=>`<div class="ball-slot" style="border-color:#ff79c6;"><img src="${ITEM_SPRITE}${b.item}" style="width:40px;height:40px;"><b>${b.name}</b><span>${b.cost.toFixed(2)} GRAM</span><span class="brl-info">≈ R$ ${(b.cost*tonPriceBRL).toFixed(2)}</span><span class="brl-info">⏱️ 3 horas</span><small style="color:#ff79c6;">${b.description}</small><button class="btn-pixel small" style="background:#9b59b6;border-color:#7b3fa0;" onclick="buyBuff('${k}')">Comprar</button></div>`).join(''); } }
+function openShop(){ shopTab = 'balls'; document.getElementById('tabBalls').classList.add('active'); document.getElementById('tabBuffs').classList.remove('active'); renderShopItems(); document.getElementById('shopModal').classList.remove('hidden'); }
+async function buyBall(k){ try { const res = await fetch(API_URL+'/api/buy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({ballType:k})}); const data = await res.json(); if (!res.ok) throw new Error(data.error); state.balance = data.newBalance; state.inventory = data.newInventory; updateBalance(); updateBallIndicator(); SOUND.transaction(); showToast(`${ballDefs[k].name} comprada!`,'success'); renderShopItems(); } catch(e) { showToast(e.message,'error'); } }
+async function buyBuff(k) { if (k === 'shinyCharm') { const cost = buffDefs.shinyCharm.cost; if (state.balance < cost) { showToast('Saldo insuficiente', 'error'); return; } state.balance -= cost; state.shinyCharmEnd = Date.now() + buffDefs.shinyCharm.duration; updateBalance(); updateShinyCharmHUD(); SOUND.transaction(); showToast('✨ Shiny Charm ativado! 3 horas de caça!', 'success'); renderShopItems(); } }
 function closeShop(){ document.getElementById('shopModal').classList.add('hidden'); }
 
 // ==================== COLEÇÃO, DEPÓSITO, SAQUE ====================
 function openCollection(){ updateCollectionUI(); document.getElementById('collectionModal').classList.remove('hidden'); }
-function updateCollectionUI(){
-    const grid=document.getElementById('pcBoxGrid');grid.innerHTML='';const start=state.currentBox*12,end=start+12;const boxPokemons=state.collection.slice(start,end);
-    for(let i=0;i<12;i++){const slot=document.createElement('div');slot.className='pc-slot';if(i<boxPokemons.length){const c=boxPokemons[i];const elapsedSec=(Date.now()-new Date(c.caughtAt).getTime())/1000;const earned=Math.min(c.roiTotal,c.dailyProduction*elapsedSec/86400);const claimable=Math.max(0,earned-c.claimed);const progress=Math.min(100,(earned/c.roiTotal)*100);slot.innerHTML=`<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">⚡ ${(c.dailyProduction/86400).toFixed(6)} GRAM/s</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;const idx=start+i;slot.onclick=()=>{claimCreature(idx);};}else slot.innerHTML='<span style="opacity:0.2;">∅</span>';grid.appendChild(slot);}
-    document.getElementById('storageProduction').innerHTML=`⚡ Produção total: <span class="highlight">🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia</span>`;
-    document.getElementById('storageTotal').innerHTML=`💰 Disponível para coleta: <span class="highlight">${getAvailableToClaim().toFixed(6)} GRAM</span>`;
-    const tabs=document.getElementById('boxTabs');tabs.innerHTML='';for(let i=0;i<state.storageBoxes;i++){const btn=document.createElement('button');btn.className='tab-btn'+(i===state.currentBox?' active':'');btn.textContent=`Box ${i+1}`;btn.onclick=()=>{state.currentBox=i;updateCollectionUI();};tabs.appendChild(btn);}
-    document.getElementById('btnExpandStorage').style.display=state.storageBoxes>=11?'none':'block';document.getElementById('btnExpandStorage').textContent=`⬆️ Expansão (${state.storageBoxes*10} GRAM)`;
-}
+function updateCollectionUI(){ const grid=document.getElementById('pcBoxGrid');grid.innerHTML='';const start=state.currentBox*12,end=start+12;const boxPokemons=state.collection.slice(start,end); for(let i=0;i<12;i++){const slot=document.createElement('div');slot.className='pc-slot';if(i<boxPokemons.length){const c=boxPokemons[i];const elapsedSec=(Date.now()-new Date(c.caughtAt).getTime())/1000;const earned=Math.min(c.roiTotal,c.dailyProduction*elapsedSec/86400);const claimable=Math.max(0,earned-c.claimed);const progress=Math.min(100,(earned/c.roiTotal)*100);slot.innerHTML=`<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">⚡ ${(c.dailyProduction/86400).toFixed(6)} GRAM/s</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;const idx=start+i;slot.onclick=()=>{claimCreature(idx);};}else slot.innerHTML='<span style="opacity:0.2;">∅</span>';grid.appendChild(slot);} document.getElementById('storageProduction').innerHTML=`⚡ Produção total: <span class="highlight-prod">🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia</span>`; document.getElementById('storageTotal').innerHTML=`💰 Disponível para coleta: <span class="highlight">${getAvailableToClaim().toFixed(6)} GRAM</span>`; const tabs=document.getElementById('boxTabs');tabs.innerHTML='';for(let i=0;i<state.storageBoxes;i++){const btn=document.createElement('button');btn.className='tab-btn'+(i===state.currentBox?' active':'');btn.textContent=`Box ${i+1}`;btn.onclick=()=>{state.currentBox=i;updateCollectionUI();};tabs.appendChild(btn);} document.getElementById('btnExpandStorage').style.display=state.storageBoxes>=11?'none':'block';document.getElementById('btnExpandStorage').textContent=`⬆️ Expansão (${state.storageBoxes*10} GRAM)`; }
 async function claimCreature(idx){try{const res=await fetch(`${API_URL}/api/collect/${idx}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});const data=await res.json();if(!res.ok)throw new Error(data.error);state.balance=data.newBalance;if(data.collected>0){state.collection[idx].claimed+=data.collected;updateBalance();showToast(`+${data.collected.toFixed(6)} GRAM coletado!`,'success');const slot=document.querySelectorAll('.pc-slot')[idx%12];if(slot){const rect=slot.getBoundingClientRect();showFloatNumber(rect.left+rect.width/2,rect.top,'+'+data.collected.toFixed(6));}}updateCollectionUI();}catch(e){showToast(e.message,'error');}}
 async function collectAll(){try{const res=await fetch(`${API_URL}/api/collect-all`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});const data=await res.json();if(!res.ok)throw new Error(data.error);state.balance=data.newBalance;if(data.collected>0){state.collection.forEach(c=>{const elapsedSec=(Date.now()-new Date(c.caughtAt).getTime())/1000;const earned=Math.min(c.roiTotal,c.dailyProduction*elapsedSec/86400);c.claimed=earned;});updateBalance();showToast(`💰 ${data.collected.toFixed(6)} GRAM coletado!`,'success');}else showToast('Nada para coletar','error');updateCollectionUI();}catch(e){showToast(e.message,'error');}}
 async function buyStorageExpansion(){try{const res=await fetch(`${API_URL}/api/expand-storage`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});const data=await res.json();if(!res.ok)throw new Error(data.error);state.balance=data.newBalance;state.storageBoxes=data.storageBoxes;updateBalance();updateCollectionUI();showToast(`⬆️ Expansão comprada! Boxes: ${state.storageBoxes}`,'success');}catch(e){showToast(e.message,'error');}}
@@ -619,4 +543,4 @@ window.addEventListener('load',()=>{
 });
 </script>
 </body>
-    </html>
+</html>
