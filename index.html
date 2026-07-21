@@ -232,10 +232,10 @@
     <div class="modal-overlay hidden" id="withdrawModal">
         <div class="modal-pixel">
             <button class="modal-close" onclick="closeWithdraw()">✕</button><h3>💸 Saque (GRAM)</h3>
-            <p>Saldo: <span id="withdrawBalance">0.00</span> GRAM</p>
+            <p>Saldo: <span id="withdrawBalance">0.000000</span> GRAM</p>
             <div class="label-text">Carteira destino</div><input class="input-pixel" type="text" id="walletAddress" placeholder="Ex: UQ...">
             <div class="label-text">Valor a sacar (GRAM)</div><input class="input-pixel" type="text" id="withdrawAmount" placeholder="Mínimo 2 GRAM">
-            <p>Taxa: 5% | Você receberá: <span id="receiveAmount">0.00</span> GRAM</p>
+            <p>Taxa: 5% | Você receberá: <span id="receiveAmount">0.000000</span> GRAM</p>
             <button class="btn-pixel gold" onclick="withdraw()">✅ Solicitar Saque</button>
             <p id="withdrawStatus"></p><button class="btn-pixel" onclick="closeWithdraw()">Cancelar</button>
         </div>
@@ -256,7 +256,7 @@
             <div style="margin-top:18px;">
                 <h4 style="font-size:0.6rem;">Seus Indicados (<span id="refCount">0</span>)</h4>
                 <div class="referral-list" id="referralList"></div>
-                <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission">0.00 GRAM</strong></p>
+                <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission">0.000000 GRAM</strong></p>
             </div>
             <button class="btn-pixel" onclick="closeReferral()">Fechar</button>
         </div>
@@ -523,9 +523,12 @@ function setEncounterButtonsEnabled(enabled) {
     state.isCaptureAnimating = !enabled;
 }
 function drawBattleScene(ctx){
-    const w=320,h=280; ctx.clearRect(0,0,w,h);
-    const sky=ctx.createLinearGradient(0,0,0,h*0.55); sky.addColorStop(0,'#5b9ecf'); sky.addColorStop(1,'#a3cef1');
-    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.55); ctx.fillStyle='#c8b878'; ctx.fillRect(0,h*0.55,w,h*0.45);
+    const w=320,h=280;
+    ctx.clearRect(0,0,w,h);
+    const sky=ctx.createLinearGradient(0,0,0,h*0.55);
+    sky.addColorStop(0,'#5b9ecf'); sky.addColorStop(1,'#a3cef1');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.55);
+    ctx.fillStyle='#c8b878'; ctx.fillRect(0,h*0.55,w,h*0.45);
     ctx.strokeStyle='#908050'; ctx.beginPath(); ctx.ellipse(w*0.35, h*0.52, 80, 28, 0, 0, Math.PI*2); ctx.stroke();
 }
 
@@ -533,7 +536,10 @@ async function triggerEncounter(){
     if(state.isEncounterActive || isStorageFull()) return;
     SOUND.encounter(); state.isEncounterActive=true; state.joystickActive=false;
     try {
-        const res = await fetch(API_URL+'/api/encounter', { method:'POST', headers:{'Authorization':getAuthHeader()} });
+        const res = await fetch(API_URL+'/api/encounter', {
+            method:'POST',
+            headers:{'Authorization':getAuthHeader()}
+        });
         const enc = await res.json();
         if (!res.ok) throw new Error(enc.error);
         state.currentEncounterId = enc.encounterId;
@@ -547,36 +553,52 @@ async function triggerEncounter(){
         drawBattleScene(document.getElementById('battleCanvas').getContext('2d'));
         if(battleState.animId) cancelAnimationFrame(battleState.animId);
         animateBattle();
-    } catch(e) { showToast('Erro no encontro', 'error'); state.isEncounterActive = false; }
+    } catch(e) {
+        showToast('Erro no encontro', 'error');
+        state.isEncounterActive = false;
+    }
 }
 
 function animateBattle(){
     if(!state.isEncounterActive) return;
     const canvas=document.getElementById('battleCanvas'), ctx=canvas.getContext('2d'), w=320,h=280;
     drawBattleScene(ctx);
-    const enc = battleState.encounterData; if(!enc) return;
+    const enc = battleState.encounterData;
+    if(!enc) return;
     const img=state.battleImg;
     if(img&&img.complete&&img.naturalWidth>0){
         let px=w*0.35, py=h*0.38, scale=1;
-        if(battleState.phase==='appear'){ battleState.timer+=0.07;
+        if(battleState.phase==='appear'){
+            battleState.timer+=0.07;
             if(battleState.timer<1){ px=w*0.35-(1-battleState.timer)*80; scale=0.4+battleState.timer*0.6; }
             else{ battleState.phase='idle'; battleState.idleTime=0; document.getElementById('battleText').innerHTML=`<b>${enc.name}</b> apareceu!`; generateBallGrid(); setEncounterButtonsEnabled(true); }
-        } else if(battleState.phase==='idle'){ battleState.idleTime++; py+=Math.sin(battleState.idleTime*0.08)*2.5; }
+        } else if(battleState.phase==='idle'){
+            battleState.idleTime++;
+            py+=Math.sin(battleState.idleTime*0.08)*2.5;
+        }
         ctx.save(); ctx.translate(px,py); ctx.scale(scale,scale);
         if (enc.shiny) { ctx.shadowColor = '#ff79c6'; ctx.shadowBlur = 30; }
         else if (enc.rarity === 'legendary') { ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 25; }
         else if (enc.rarity === 'epic') { ctx.shadowColor = '#9b59b6'; ctx.shadowBlur = 15; }
         else if (enc.rarity === 'rare') { ctx.shadowColor = '#4a90d9'; ctx.shadowBlur = 10; }
-        ctx.drawImage(img,-40,-40,80,80); ctx.restore();
+        ctx.drawImage(img,-40,-40,80,80);
+        ctx.restore();
         const rarityColors={common:'#8a8a8a',rare:'#4a90d9',epic:'#9b59b6',legendary:'#f1c40f'};
         ctx.font='bold 10px "Press Start 2P"'; ctx.fillStyle='#000'; ctx.fillText(enc.rarity.toUpperCase(), px-50, py-60);
         ctx.fillStyle=rarityColors[enc.rarity]; ctx.fillText(enc.rarity.toUpperCase(), px-48, py-58);
     }
-    if(battleState.phase==='capture'){ battleState.timer+=0.5;
-        if(battleState.timer>18&&battleState.shakes<4){ battleState.shakes++; SOUND.captureShake(); battleState.timer=0;
+    if(battleState.phase==='capture'){
+        battleState.timer+=0.5;
+        if(battleState.timer>18&&battleState.shakes<4){
+            battleState.shakes++; SOUND.captureShake(); battleState.timer=0;
             if(battleState.shakes===4){
-                if(battleState.success){ SOUND.captureSuccess(); }
-                else { SOUND.captureFail(); document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢'; setTimeout(()=>{ closeEncounter(); resetJoystick(); },1400); }
+                if(battleState.success){
+                    SOUND.captureSuccess();
+                } else {
+                    SOUND.captureFail();
+                    document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢';
+                    setTimeout(()=>{ closeEncounter(); resetJoystick(); },1400);
+                }
                 return;
             }
         }
@@ -595,7 +617,8 @@ function generateBallGrid(){
     }
     Object.entries(ballDefs).forEach(([key,b])=>{
         const count=state.inventory[key]||0;
-        const slot=document.createElement('div'); slot.className='ball-slot' + (count===0 ? ' disabled' : '');
+        const slot=document.createElement('div');
+        slot.className='ball-slot' + (count===0 ? ' disabled' : '');
         slot.innerHTML=`<img src="${ITEM_SPRITE}${b.item}" style="width:36px;height:36px;"><span>${b.name}</span><small>x${count}</small><small style="color:#ffd700;">${b.rates[enc.rarity]}%</small>`;
         if(count>0) slot.onclick=()=>{ if(battleState.phase==='capture'||state.isCaptureAnimating) return; if(isStorageFull()){ showToast('Storage cheio!','error'); return; } attemptCatch(key); };
         grid.appendChild(slot);
@@ -607,12 +630,15 @@ async function attemptCatchTutorial() {
     setEncounterButtonsEnabled(false);
     try {
         const res = await fetch(API_URL+'/api/capture', {
-            method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
             body:JSON.stringify({ encounterId: state.currentEncounterId, ballType: 'tutorial' })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.tutorialBalls = data.tutorialBalls; updateBallIndicator(); saveState();
+        state.tutorialBalls = data.tutorialBalls;
+        updateBallIndicator();
+        saveState();
         document.getElementById('battleText').innerHTML='<b>A Pokébola de iniciante falhou...</b>';
         setTimeout(()=>{ closeEncounter(); resetJoystick(); }, 1500);
     } catch(e) { showToast(e.message,'error'); setEncounterButtonsEnabled(true); }
@@ -623,17 +649,26 @@ async function attemptCatch(ballKey) {
     setEncounterButtonsEnabled(false);
     try {
         const res = await fetch(API_URL+'/api/capture', {
-            method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
             body:JSON.stringify({ encounterId: state.currentEncounterId, ballType: ballKey })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.inventory = data.newInventory; state.balance = data.newBalance; updateBalance(); updateBallIndicator();
+        state.inventory = data.newInventory;
+        state.balance = data.newBalance;
+        updateBalance();
+        updateBallIndicator();
         if (data.success) {
-            state.collection.push(data.pokemon); SOUND.captureSuccess();
+            state.collection.push(data.pokemon);
+            SOUND.captureSuccess();
             document.getElementById('battleText').innerHTML='<b>Gotcha!</b> 🎉';
             setTimeout(()=>{ closeEncounter(); showCatchResult(data.pokemon, true); resetJoystick(); },900);
-        } else { SOUND.captureFail(); document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢'; setTimeout(()=>{ closeEncounter(); resetJoystick(); },1400); }
+        } else {
+            SOUND.captureFail();
+            document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢';
+            setTimeout(()=>{ closeEncounter(); resetJoystick(); },1400);
+        }
     } catch(e) { showToast(e.message,'error'); setEncounterButtonsEnabled(true); }
 }
 
@@ -644,7 +679,7 @@ function showCatchResult(pkm,success){
     document.getElementById('resultRarity').textContent=pkm.rarity.toUpperCase();
     document.getElementById('resultRarity').className='rarity-badge '+pkm.rarity;
     document.getElementById('resultShiny').textContent=pkm.shiny?'✨ SHINY ✨':'';
-    document.getElementById('resultROI').textContent=pkm.roiTotal.toFixed(2);
+    document.getElementById('resultROI').textContent=pkm.roiTotal.toFixed(6);
     document.getElementById('resultDays').textContent=pkm.roiDays;
     document.getElementById('resultDaily').textContent = pkm.dailyProduction.toFixed(6);
     document.getElementById('catchResultModal').classList.remove('hidden');
@@ -664,11 +699,20 @@ function openShop(){
 }
 async function buyBall(k){
     try {
-        const res = await fetch(API_URL+'/api/buy', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({ ballType: k }) });
+        const res = await fetch(API_URL+'/api/buy', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({ ballType: k })
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.balance = data.newBalance; state.inventory = data.newInventory; updateBalance(); updateBallIndicator();
-        SOUND.transaction(); showToast(`${ballDefs[k].name} comprada!`,'success'); openShop();
+        state.balance = data.newBalance;
+        state.inventory = data.newInventory;
+        updateBalance();
+        updateBallIndicator();
+        SOUND.transaction();
+        showToast(`${ballDefs[k].name} comprada!`,'success');
+        openShop();
     } catch(e) { showToast(e.message,'error'); }
 }
 function closeShop(){ document.getElementById('shopModal').classList.add('hidden'); }
@@ -686,7 +730,7 @@ function updateCollectionUI(){
             const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400);
             const claimable = Math.max(0, earned - c.claimed);
             const progress = Math.min(100, (earned / c.roiTotal)*100);
-            slot.innerHTML = `<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">📦 ${c.dailyProduction.toFixed(4)}/dia</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;
+            slot.innerHTML = `<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">📦 ${c.dailyProduction.toFixed(6)}/dia</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`;
             const idx = start + i;
             slot.onclick=()=>{ claimCreature(idx); };
         } else slot.innerHTML='<span style="opacity:0.2;">∅</span>';
@@ -702,60 +746,97 @@ function updateCollectionUI(){
 }
 async function claimCreature(idx){
     try {
-        const res = await fetch(`${API_URL}/api/collect/${idx}`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()} });
+        const res = await fetch(`${API_URL}/api/collect/${idx}`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         state.balance = data.newBalance;
-        if (data.collected > 0) { state.collection[idx].claimed += data.collected; updateBalance(); showToast(`+${data.collected.toFixed(6)} GRAM coletado!`,'success'); }
+        if (data.collected > 0) {
+            state.collection[idx].claimed += data.collected;
+            updateBalance();
+            showToast(`+${data.collected.toFixed(6)} GRAM coletado!`,'success');
+        }
         updateCollectionUI();
     } catch(e) { showToast(e.message,'error'); }
 }
 async function collectAll(){
     try {
-        const res = await fetch(`${API_URL}/api/collect-all`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()} });
+        const res = await fetch(`${API_URL}/api/collect-all`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         state.balance = data.newBalance;
         if (data.collected > 0) {
-            state.collection.forEach(c => { const elapsedSec = (Date.now() - new Date(c.caughtAt).getTime())/1000; const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400); c.claimed = earned; });
-            updateBalance(); showToast(`Coletado ${data.collected.toFixed(6)} GRAM!`,'success');
+            state.collection.forEach(c => {
+                const elapsedSec = (Date.now() - new Date(c.caughtAt).getTime())/1000;
+                const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400);
+                c.claimed = earned;
+            });
+            updateBalance();
+            showToast(`Coletado ${data.collected.toFixed(6)} GRAM!`,'success');
         } else showToast('Nada para coletar','error');
         updateCollectionUI();
     } catch(e) { showToast(e.message,'error'); }
 }
 async function buyStorageExpansion(){
     try {
-        const res = await fetch(`${API_URL}/api/expand-storage`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()} });
+        const res = await fetch(`${API_URL}/api/expand-storage`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.balance = data.newBalance; state.storageBoxes = data.storageBoxes; updateBalance(); updateCollectionUI();
+        state.balance = data.newBalance;
+        state.storageBoxes = data.storageBoxes;
+        updateBalance();
+        updateCollectionUI();
         showToast(`Expansão comprada! Boxes: ${state.storageBoxes}`,'success');
     } catch(e) { showToast(e.message,'error'); }
 }
 function closeCollection(){ resetJoystick(); document.getElementById('collectionModal').classList.add('hidden'); }
 
-function openDeposit(){ document.getElementById('depositTxHash').value=''; document.getElementById('depositAmount').value=''; document.getElementById('depositStatus').innerHTML=''; document.getElementById('depositModal').classList.remove('hidden'); }
+function openDeposit(){
+    document.getElementById('depositTxHash').value='';
+    document.getElementById('depositAmount').value='';
+    document.getElementById('depositStatus').innerHTML='';
+    document.getElementById('depositModal').classList.remove('hidden');
+}
 async function submitDeposit(){
     const tx = document.getElementById('depositTxHash').value.trim();
     let rawAmt = document.getElementById('depositAmount').value.replace(',', '.');
     const amt = parseFloat(rawAmt);
     if(!tx || isNaN(amt) || amt < 0.2){ showToast('Preencha corretamente (mín. 0.2 GRAM)','error'); return; }
     try {
-        const res = await fetch(API_URL+'/api/deposit', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({ amount: amt, txHash: tx }) });
+        const res = await fetch(API_URL+'/api/deposit', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({ amount: amt, txHash: tx })
+        });
         const data = await res.json();
-        if (res.ok) { showToast('Depósito registrado! Aguarde a confirmação.', 'success'); document.getElementById('depositStatus').innerHTML = '⏳ Pendente de aprovação.'; }
-        else showToast(data.error || 'Erro no depósito', 'error');
+        if (res.ok) {
+            showToast('Depósito registrado! Aguarde a confirmação.', 'success');
+            document.getElementById('depositStatus').innerHTML = '⏳ Pendente de aprovação.';
+        } else showToast(data.error || 'Erro no depósito', 'error');
     } catch (e) { showToast('Erro de conexão', 'error'); }
 }
 function closeDeposit(){ document.getElementById('depositModal').classList.add('hidden'); }
 
 function openWithdraw(){
     document.getElementById('withdrawBalance').textContent=state.balance.toFixed(6);
-    document.getElementById('withdrawAmount').value=''; document.getElementById('walletAddress').value='';
-    document.getElementById('receiveAmount').textContent='0.00'; document.getElementById('withdrawStatus').innerHTML='';
+    document.getElementById('withdrawAmount').value='';
+    document.getElementById('walletAddress').value='';
+    document.getElementById('receiveAmount').textContent='0.000000';
+    document.getElementById('withdrawStatus').innerHTML='';
     document.getElementById('withdrawModal').classList.remove('hidden');
 }
-document.getElementById('withdrawAmount').addEventListener('input', function() { const v = parseFloat(this.value.replace(',', '.')) || 0; document.getElementById('receiveAmount').textContent = (v * 0.95).toFixed(6); });
+document.getElementById('withdrawAmount').addEventListener('input', function() {
+    const v = parseFloat(this.value.replace(',', '.')) || 0;
+    document.getElementById('receiveAmount').textContent = (v * 0.95).toFixed(6);
+});
 async function withdraw(){
     const amt = parseFloat(document.getElementById('withdrawAmount').value.replace(',', '.'));
     const wallet = document.getElementById('walletAddress').value.trim();
@@ -763,10 +844,20 @@ async function withdraw(){
     if (isNaN(amt) || amt < 2) { showToast('Mínimo 2 GRAM', 'error'); return; }
     if (amt > state.balance) { showToast('Saldo insuficiente', 'error'); return; }
     try {
-        const res = await fetch(API_URL + '/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() }, body: JSON.stringify({ amount: amt, walletAddress: wallet }) });
+        const res = await fetch(API_URL + '/api/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+            body: JSON.stringify({ amount: amt, walletAddress: wallet })
+        });
         const data = await res.json();
-        if (res.ok) { state.balance = data.newBalance; updateBalance(); showToast('Saque solicitado! Horário permitido: 08h-20h BRT.', 'success'); document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.'; }
-        else showToast(data.error || 'Erro no saque', 'error');
+        if (res.ok) {
+            state.balance = data.newBalance;
+            updateBalance();
+            showToast('Saque solicitado! Horário permitido: 08h-20h BRT.', 'success');
+            document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.';
+        } else {
+            showToast(data.error || 'Erro no saque', 'error');
+        }
     } catch (e) { showToast('Erro de conexão', 'error'); }
 }
 function closeWithdraw(){ document.getElementById('withdrawModal').classList.add('hidden'); }
@@ -781,12 +872,30 @@ async function openReferral() {
         document.getElementById('totalCommission').textContent = data.totalCommission.toFixed(6) + ' GRAM';
         document.getElementById('refCount').textContent = data.referrals.length;
         const listEl = document.getElementById('referralList');
-        listEl.innerHTML = data.referrals.map(r => `<div class="referral-item"><span>${r.username || r.telegramId}</span><span>💰 ${(r.totalDeposited||0).toFixed(2)} | +${(r.commissionEarned||0).toFixed(6)}</span></div>`).join('') || '<p style="font-size:0.5rem;">Nenhum indicado ainda.</p>';
+        listEl.innerHTML = data.referrals.map(r => `
+            <div class="referral-item">
+                <span>${r.username || r.telegramId}</span>
+                <span>💰 ${(r.totalDeposited||0).toFixed(2)} | +${(r.commissionEarned||0).toFixed(6)}</span>
+            </div>
+        `).join('') || '<p style="font-size:0.5rem;">Nenhum indicado ainda.</p>';
         document.getElementById('referralModal').classList.remove('hidden');
-    } catch(e) { showToast('Erro ao carregar referral', 'error'); }
+    } catch(e) {
+        showToast('Erro ao carregar referral', 'error');
+    }
 }
-function copyReferralLink() { navigator.clipboard.writeText(document.getElementById('refLink').textContent).then(() => showToast('Link copiado!', 'success')); }
-function shareReferral() { const link = document.getElementById('refLink').textContent; if (navigator.share) navigator.share({ title: 'Gram Catcher', text: 'Jogue e ganhe GRAM!', url: link }); else { copyReferralLink(); showToast('Link copiado!', 'success'); } }
+function copyReferralLink() {
+    navigator.clipboard.writeText(document.getElementById('refLink').textContent)
+        .then(() => showToast('Link copiado!', 'success'));
+}
+function shareReferral() {
+    const link = document.getElementById('refLink').textContent;
+    if (navigator.share) {
+        navigator.share({ title: 'Gram Catcher', text: 'Jogue e ganhe GRAM!', url: link });
+    } else {
+        copyReferralLink();
+        showToast('Link copiado! Compartilhe com seus amigos.', 'success');
+    }
+}
 function closeReferral() { document.getElementById('referralModal').classList.add('hidden'); }
 
 // ==================== JOYSTICK + TECLADO ====================
@@ -824,8 +933,12 @@ function goToScreen(id) {
         document.getElementById('gameControls').classList.add('visible');
         state.gameStarted = true;
         if (!state.animationId) startGameLoop();
-        if (!state.tutorialDone) { setTimeout(() => startIntroTutorial(), 500); }
-    } else { if (state.animationId) { cancelAnimationFrame(state.animationId); state.animationId = null; } }
+        if (!state.tutorialDone) {
+            setTimeout(() => startIntroTutorial(), 500);
+        }
+    } else {
+        if (state.animationId) { cancelAnimationFrame(state.animationId); state.animationId = null; }
+    }
 }
 
 window.addEventListener('load', ()=>{
