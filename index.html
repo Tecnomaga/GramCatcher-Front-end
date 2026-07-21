@@ -204,25 +204,25 @@
 
     <div class="modal-overlay hidden" id="depositModal">
         <div class="modal-pixel">
-            <button class="modal-close" onclick="closeDeposit()">✕</button><h3>📥 Depósito (TON)</h3>
-            <p>Envie TON para:</p>
+            <button class="modal-close" onclick="closeDeposit()">✕</button><h3>📥 Depósito (GRAM)</h3>
+            <p>Envie GRAM para:</p>
             <div class="wallet-line">
                 <span id="walletAddressText">UQCA7IxtVOJ-YQhpOv_y8bVPAG5S7Fb0eFH8Mwre5dt_IHML</span>
                 <button onclick="copyWallet()">📋 Copiar</button>
             </div>
             <div class="label-text">Hash da Transação</div><input class="input-pixel" type="text" id="depositTxHash" placeholder="Ex: 0x1234...">
-            <div class="label-text">Valor (TON)</div><input class="input-pixel" type="text" id="depositAmount" placeholder="Mínimo 0.2 TON">
+            <div class="label-text">Valor (GRAM)</div><input class="input-pixel" type="text" id="depositAmount" placeholder="Mínimo 0.2 GRAM">
             <button class="btn-pixel green" onclick="submitDeposit()">📤 Enviar Comprovante</button>
             <p id="depositStatus"></p><button class="btn-pixel" onclick="closeDeposit()">Fechar</button>
         </div>
     </div>
     <div class="modal-overlay hidden" id="withdrawModal">
         <div class="modal-pixel">
-            <button class="modal-close" onclick="closeWithdraw()">✕</button><h3>💸 Saque (TON)</h3>
+            <button class="modal-close" onclick="closeWithdraw()">✕</button><h3>💸 Saque (GRAM)</h3>
             <p>Saldo: <span id="withdrawBalance">0.00</span> GRAM</p>
-            <div class="label-text">Carteira TON</div><input class="input-pixel" type="text" id="walletAddress" placeholder="Ex: UQ...">
-            <div class="label-text">Valor (GRAM)</div><input class="input-pixel" type="text" id="withdrawAmount" placeholder="Mínimo 2 GRAM">
-            <p>Taxa: 5% | Recebe: <span id="receiveAmount">0.00</span> TON</p>
+            <div class="label-text">Carteira destino</div><input class="input-pixel" type="text" id="walletAddress" placeholder="Ex: UQ...">
+            <div class="label-text">Valor a sacar (GRAM)</div><input class="input-pixel" type="text" id="withdrawAmount" placeholder="Mínimo 2 GRAM">
+            <p>Taxa: 5% | Você receberá: <span id="receiveAmount">0.00</span> GRAM</p>
             <button class="btn-pixel gold" onclick="withdraw()">✅ Solicitar Saque</button>
             <p id="withdrawStatus"></p><button class="btn-pixel" onclick="closeWithdraw()">Cancelar</button>
         </div>
@@ -369,7 +369,7 @@ async function loadGame() {
         if (d.exists) {
             state.balance = d.balance;
             state.inventory = d.inventory;
-            state.collection = d.collection;
+            state.collection = d.pokemonCollection;  // renomeado no servidor
             state.storageBoxes = d.storageBoxes;
             state.tutorialBalls = d.tutorialBalls;
             state.tutorialActive = d.tutorialActive;
@@ -584,7 +584,6 @@ function animateBattle(){
             if(battleState.shakes===4){
                 if(battleState.success){
                     SOUND.captureSuccess();
-                    // Sucesso tratado em attemptCatch
                 } else {
                     SOUND.captureFail();
                     document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢';
@@ -799,7 +798,7 @@ async function submitDeposit(){
     const tx = document.getElementById('depositTxHash').value.trim();
     let rawAmt = document.getElementById('depositAmount').value.replace(',', '.');
     const amt = parseFloat(rawAmt);
-    if(!tx || isNaN(amt) || amt < 0.2){ showToast('Preencha corretamente (mín. 0.2 TON)','error'); return; }
+    if(!tx || isNaN(amt) || amt < 0.2){ showToast('Preencha corretamente (mín. 0.2 GRAM)','error'); return; }
     try {
         const res = await fetch(API_URL+'/api/deposit', {
             method:'POST',
@@ -823,26 +822,31 @@ function openWithdraw(){
     document.getElementById('withdrawStatus').innerHTML='';
     document.getElementById('withdrawModal').classList.remove('hidden');
 }
-document.getElementById('withdrawAmount').addEventListener('input',function(){ const v=parseFloat(this.value.replace(',','.'))||0; document.getElementById('receiveAmount').textContent=(v*0.95).toFixed(2); });
+document.getElementById('withdrawAmount').addEventListener('input', function() {
+    const v = parseFloat(this.value.replace(',', '.')) || 0;
+    document.getElementById('receiveAmount').textContent = (v * 0.95).toFixed(2);
+});
 async function withdraw(){
-    const amt=parseFloat(document.getElementById('withdrawAmount').value.replace(',','.'));
-    const wallet=document.getElementById('walletAddress').value.trim();
-    if(!wallet){ showToast('Carteira TON obrigatória','error'); return; }
-    if(isNaN(amt)||amt<2){ showToast('Mínimo 2 GRAM','error'); return; }
-    if(amt>state.balance){ showToast('Saldo insuficiente','error'); return; }
+    const amt = parseFloat(document.getElementById('withdrawAmount').value.replace(',', '.'));
+    const wallet = document.getElementById('walletAddress').value.trim();
+    if (!wallet) { showToast('Carteira obrigatória', 'error'); return; }
+    if (isNaN(amt) || amt < 2) { showToast('Mínimo 2 GRAM', 'error'); return; }
+    if (amt > state.balance) { showToast('Saldo insuficiente', 'error'); return; }
     try {
-        const res = await fetch(API_URL+'/api/withdraw', {
-            method:'POST',
-            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
-            body:JSON.stringify({ amount: amt, walletAddress: wallet })
+        const res = await fetch(API_URL + '/api/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+            body: JSON.stringify({ amount: amt, walletAddress: wallet })
         });
         const data = await res.json();
         if (res.ok) {
             state.balance = data.newBalance;
             updateBalance();
-            showToast('Saque solicitado! Processaremos em breve.', 'success');
+            showToast('Saque solicitado! Horário permitido: 08h-20h BRT.', 'success');
             document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.';
-        } else showToast(data.error || 'Erro no saque', 'error');
+        } else {
+            showToast(data.error || 'Erro no saque', 'error');
+        }
     } catch (e) { showToast('Erro de conexão', 'error'); }
 }
 function closeWithdraw(){ document.getElementById('withdrawModal').classList.add('hidden'); }
@@ -859,7 +863,7 @@ async function openReferral() {
         listEl.innerHTML = data.referrals.map(r => `
             <div class="referral-item">
                 <span>${r.username || r.telegramId}</span>
-                <span>💰 ${(r.totalDeposited||0).toFixed(1)} TON | +${(r.commissionEarned||0).toFixed(2)} GRAM</span>
+                <span>💰 ${(r.totalDeposited||0).toFixed(1)} GRAM | +${(r.commissionEarned||0).toFixed(2)} GRAM</span>
             </div>
         `).join('') || '<p style="font-size:0.5rem;">Nenhum indicado ainda.</p>';
         document.getElementById('referralModal').classList.remove('hidden');
