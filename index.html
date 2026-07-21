@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    <!-- Modais (mantidos) -->
+    <!-- Modais -->
     <div class="modal-overlay hidden" id="tutorialIntroModal"><div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div></div>
     <div class="modal-overlay hidden" id="tutorialModal"><div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Escolher Treinador</button></div></div>
     <div class="modal-overlay hidden" id="trainerModal"><div class="modal-pixel golden"><h3>🧢 Escolha seu Treinador</h3><p style="font-size:0.5rem;">Quem vai explorar o mundo?</p><div class="trainer-select"><div class="trainer-option selected" id="trainerRed" onclick="selectTrainer('red')"><img src="https://play.pokemonshowdown.com/sprites/trainers/red.png" alt="Red"><span>Red</span></div><div class="trainer-option" id="trainerMay" onclick="selectTrainer('may')"><img src="https://play.pokemonshowdown.com/sprites/trainers/may.png" alt="May"><span>May</span></div></div><button class="btn-pixel gold" onclick="confirmTrainer()">Começar Aventura!</button></div></div>
@@ -368,7 +368,7 @@ async function triggerEncounter(retryCount=0){if(state.isEncounterActive||isStor
 function animateBattle(){if(!state.isEncounterActive)return;const canvas=document.getElementById('battleCanvas'),ctx=canvas.getContext('2d'),w=320,h=280;drawBattleScene(ctx);const enc=battleState.encounterData;if(!enc)return;const img=state.battleImg;if(img&&img.complete&&img.naturalWidth>0){let px=w*0.35,py=h*0.38,scale=1;if(battleState.phase==='appear'){battleState.timer+=0.07;if(battleState.timer<1){px=w*0.35-(1-battleState.timer)*80;scale=0.4+battleState.timer*0.6;}else{battleState.phase='idle';battleState.idleTime=0;document.getElementById('battleText').innerHTML=`<b>${enc.name}</b> apareceu!`;generateBallGrid();setEncounterButtonsEnabled(true);}}else if(battleState.phase==='idle'){battleState.idleTime++;py+=Math.sin(battleState.idleTime*0.08)*2.5;}ctx.save();ctx.translate(px,py);ctx.scale(scale,scale);if(enc.shiny){ctx.shadowColor='#ff79c6';ctx.shadowBlur=30;}else if(enc.rarity==='legendary'){ctx.shadowColor='#f1c40f';ctx.shadowBlur=25;}else if(enc.rarity==='epic'){ctx.shadowColor='#9b59b6';ctx.shadowBlur=15;}else if(enc.rarity==='rare'){ctx.shadowColor='#4a90d9';ctx.shadowBlur=10;}ctx.drawImage(img,-40,-40,80,80);ctx.restore();const rarityColors={common:'#8a8a8a',rare:'#4a90d9',epic:'#9b59b6',legendary:'#f1c40f'};ctx.font='bold 10px "Press Start 2P"';ctx.fillStyle='#000';ctx.fillText(enc.rarity.toUpperCase(),px-50,py-60);ctx.fillStyle=rarityColors[enc.rarity];ctx.fillText(enc.rarity.toUpperCase(),px-48,py-58);}if(battleState.phase==='capture'){battleState.timer+=0.5;if(battleState.timer>18&&battleState.shakes<4){battleState.shakes++;SOUND.captureShake();battleState.timer=0;if(battleState.shakes===4){if(battleState.success){SOUND.captureSuccess();}else{SOUND.captureFail();document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢';setTimeout(()=>{closeEncounter();resetJoystick();},1400);}return;}}}battleState.animId=requestAnimationFrame(animateBattle);}
 function generateBallGrid(){const grid=document.getElementById('ballGridContainer');grid.innerHTML='';const enc=battleState.encounterData;if(!enc)return;if(state.tutorialBalls>0){const slot=document.createElement('div');slot.className='ball-slot';slot.innerHTML=`<img src="${ITEM_SPRITE}poke-ball.png" style="width:36px;height:36px;"><span>Pokébola Iniciante</span><small>x${state.tutorialBalls}</small><small style="color:#ffd700;">2%</small>`;slot.onclick=()=>{if(battleState.phase==='capture'||state.isCaptureAnimating)return;if(isStorageFull()){showToast('Storage cheio!','error');return;}attemptCatchTutorial();};grid.appendChild(slot);}if(state.inventory.friendball>0){const slot=document.createElement('div');slot.className='ball-slot';slot.innerHTML=`<img src="${ITEM_SPRITE}friend-ball.png" style="width:36px;height:36px;"><span>Friend Ball</span><small>x${state.inventory.friendball}</small><small style="color:#ffd700;">2%</small>`;slot.onclick=()=>{if(battleState.phase==='capture'||state.isCaptureAnimating)return;if(isStorageFull()){showToast('Storage cheio!','error');return;}attemptCatch('friendball');};grid.appendChild(slot);}Object.entries(ballDefs).forEach(([key,b])=>{if(key==='friendball')return;const count=state.inventory[key]||0;const slot=document.createElement('div');slot.className='ball-slot'+(count===0?' disabled':'');slot.innerHTML=`<img src="${ITEM_SPRITE}${b.item}" style="width:36px;height:36px;"><span>${b.name}</span><small>x${count}</small><small style="color:#ffd700;">${b.rates[enc.rarity]}%</small>`;if(count>0)slot.onclick=()=>{if(battleState.phase==='capture'||state.isCaptureAnimating)return;if(isStorageFull()){showToast('Storage cheio!','error');return;}attemptCatch(key);};grid.appendChild(slot);});}
 
-// ==================== CAPTURA (CORRIGIDA - MESCLA INVENTÁRIO) ====================
+// ==================== CAPTURA (CORRIGIDA - MESCLA INVENTÁRIO E REABILITA BOTÕES) ====================
 async function attemptCatchTutorial(retryCount=0){
     if(state.tutorialBalls<=0)return;
     setEncounterButtonsEnabled(false);
@@ -385,6 +385,7 @@ async function attemptCatchTutorial(retryCount=0){
         console.error('Erro na captura:',e.message);
         if(retryCount<2){setTimeout(()=>attemptCatchTutorial(retryCount+1),3000);}
         else{showToast('Erro de conexão','error');}
+    }finally{
         setEncounterButtonsEnabled(true);
     }
 }
@@ -396,7 +397,6 @@ async function attemptCatch(ballKey,retryCount=0){
         const res = await fetch(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:ballKey})});
         if(!res.ok)throw new Error('Erro '+res.status);
         const data = await res.json();
-        // Mescla o inventário recebido com o estado atual, garantindo que campos não retornados permaneçam
         state.inventory = { ...state.inventory, ...data.newInventory };
         state.balance = data.newBalance;
         updateBalance();
@@ -416,6 +416,7 @@ async function attemptCatch(ballKey,retryCount=0){
         console.error('Erro na captura:',e.message);
         if(retryCount<2){setTimeout(()=>attemptCatch(ballKey,retryCount+1),3000);}
         else{showToast('Erro de conexão','error');}
+    }finally{
         setEncounterButtonsEnabled(true);
     }
 }
