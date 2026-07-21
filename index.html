@@ -192,9 +192,28 @@ const buffDefs = {
     battlePass:{ name:'Passe de Batalha', item:'contest-pass.png', cost:3.0, duration:30*24*60*60*1000, description:'Complete 12 capturas. Expansão GRÁTIS!' }
 };
 
+// ==================== FETCH COM TIMEOUT ====================
+const FETCH_TIMEOUT = 10000; // 10 segundos
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            throw new Error('Tempo de conexão esgotado');
+        }
+        throw err;
+    }
+}
+
 async function loadGameConfig() {
     try {
-        const res = await fetch(API_URL+'/api/game-config');
+        const res = await fetchWithTimeout(API_URL+'/api/game-config');
         if (!res.ok) throw new Error('Erro ao carregar configurações');
         const data = await res.json();
         pokemonList = data.pokemonList;
@@ -225,7 +244,7 @@ function showFloatNumber(x,y,text) { const el=document.createElement('div'); el.
 
 // ==================== COTAÇÃO ====================
 let tonPriceBRL = 27.50;
-async function updateTonPrice() { try { const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=brl'); const d=await r.json(); if(d['the-open-network']?.brl) tonPriceBRL=d['the-open-network'].brl; } catch(e){} document.getElementById('tonPriceDisplay').innerHTML=`1 GRAM = R$ ${tonPriceBRL.toFixed(2)}`; }
+async function updateTonPrice() { try { const r=await fetchWithTimeout('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=brl'); const d=await r.json(); if(d['the-open-network']?.brl) tonPriceBRL=d['the-open-network'].brl; } catch(e){} document.getElementById('tonPriceDisplay').innerHTML=`1 GRAM = R$ ${tonPriceBRL.toFixed(2)}`; }
 updateTonPrice(); setInterval(updateTonPrice,60000);
 
 // ==================== ESTADO DO JOGO ====================
@@ -259,13 +278,13 @@ function getShinyCharmTimeLeft() { return Math.max(0, Math.ceil((state.shinyChar
 function isBattlePassActive() { return state.battlePassActive && new Date(state.battlePassEnd) > new Date(); }
 
 // ==================== API ====================
-async function saveState() { try { await fetch(API_URL+'/api/player/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({tutorialBalls:state.tutorialBalls,tutorialActive:state.tutorialActive,tutorialDone:state.tutorialDone})}); } catch(e) {} }
+async function saveState() { try { await fetchWithTimeout(API_URL+'/api/player/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({tutorialBalls:state.tutorialBalls,tutorialActive:state.tutorialActive,tutorialDone:state.tutorialDone})}); } catch(e) {} }
 let saveInterval = null;
 async function loadGame() {
     await loadGameConfig();
     try {
         const startParam = tg.initDataUnsafe?.start_param || '';
-        const r = await fetch(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`, { headers:{'Authorization':getAuthHeader()} });
+        const r = await fetchWithTimeout(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`, { headers:{'Authorization':getAuthHeader()} });
         if (!r.ok) throw new Error('Erro ' + r.status);
         const d = await r.json();
         if (d.exists) {
@@ -313,7 +332,7 @@ function updateDailyButton() {
 }
 async function claimDailyReward() {
     try {
-        const res = await fetch(API_URL+'/api/daily-reward', { method:'POST', headers:{'Authorization':getAuthHeader()} });
+        const res = await fetchWithTimeout(API_URL+'/api/daily-reward', { method:'POST', headers:{'Authorization':getAuthHeader()} });
         const data = await res.json(); if (!res.ok) throw new Error(data.error);
         state.inventory.friendball = (state.inventory.friendball || 0) + 1; state.lastDailyReward = new Date().toISOString();
         updateBallIndicator(); updateDailyButton(); showToast('🎁 Friend Ball recebida!', 'success');
@@ -358,7 +377,7 @@ function drawMap(ctx,w,h){ const camX=state.playerX-w/2,camY=state.playerY-h/2; 
 function startGameLoop(){ if(!state.gameStarted||state.animationId) return; let lastPosX=state.playerX,lastPosY=state.playerY; function loop(){ if(!state.gameStarted){ state.animationId=null; return; } if(state.gamePaused){ state.animationId=requestAnimationFrame(loop); return; } state.frameCounter++; processJoystickMovement(); const now=Date.now(); if(now-state.lastProductionUpdate>=1000){ updateProductionHUD(); updateShinyCharmHUD(); state.lastProductionUpdate=now; } const canvas=document.getElementById('gameCanvas'); if(canvas._ctx&&(lastPosX!==state.playerX||lastPosY!==state.playerY||state.frameCounter%30===0)){ canvas._ctx.clearRect(0,0,canvas._w,canvas._h); drawMap(canvas._ctx,canvas._w,canvas._h); lastPosX=state.playerX; lastPosY=state.playerY; } state.animationId=requestAnimationFrame(loop); } state.animationId=requestAnimationFrame(loop); }
 function processJoystickMovement(){ if(!state.joystickActive||state.isEncounterActive) return; const dx=state.joystickDX*1.9,dy=state.joystickDY*1.9; if(Math.abs(dx)<0.08&&Math.abs(dy)<0.08) return; state.playerX=Math.min(state.mapWidth-10,Math.max(10,state.playerX+dx)); state.playerY=Math.min(state.mapHeight-10,Math.max(10,state.playerY+dy)); state.stepsSinceEncounter+=0.5; if(state.frameCounter%4===0) SOUND.step(); const totalBalls=Object.values(state.inventory).reduce((a,b)=>a+b,0)+(state.tutorialBalls||0); if(state.stepsSinceEncounter>35&&isInGrass(state.playerX,state.playerY)&&Math.random()<0.35){ if(isStorageFull()){ showToast('⚠️ Storage cheio!','error'); state.stepsSinceEncounter=0; return; } if(totalBalls<=0){ showToast('⚠️ Você não tem Pokébolas!','error'); state.stepsSinceEncounter=0; return; } state.stepsSinceEncounter=0; triggerEncounter(); } }
 
-// ==================== BATALHA (CORRIGIDA) ====================
+// ==================== BATALHA (CORRIGIDA COM TIMEOUT) ====================
 let battleState={phase:'init',timer:0,idleTime:0,shakes:0,success:false,encounterData:null,animId:null};
 function setEncounterButtonsEnabled(enabled){ document.getElementById('encounterCloseBtn').disabled=!enabled; document.getElementById('encounterFleeBtn').disabled=!enabled; state.isCaptureAnimating=!enabled; }
 function drawBattleScene(ctx){ const w=320,h=280; ctx.clearRect(0,0,w,h); const sky=ctx.createLinearGradient(0,0,0,h*0.55); sky.addColorStop(0,'#5b9ecf'); sky.addColorStop(1,'#a3cef1'); ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.55); ctx.fillStyle='#c8b878'; ctx.fillRect(0,h*0.55,w,h*0.45); ctx.strokeStyle='#908050'; ctx.beginPath(); ctx.ellipse(w*0.35,h*0.52,80,28,0,0,Math.PI*2); ctx.stroke(); }
@@ -369,7 +388,7 @@ async function triggerEncounter(retryCount=0){
     state.joystickActive=false;
     setGamePaused(true);
     try{
-        const res=await fetch(API_URL+'/api/encounter',{method:'POST',headers:{'Authorization':getAuthHeader()}});
+        const res=await fetchWithTimeout(API_URL+'/api/encounter',{method:'POST',headers:{'Authorization':getAuthHeader()}});
         if(!res.ok) throw new Error('Erro '+res.status);
         const enc=await res.json();
         state.currentEncounterId=enc.encounterId;
@@ -467,7 +486,7 @@ async function attemptCatchTutorial(retryCount=0){
     if(state.tutorialBalls<=0) return;
     setEncounterButtonsEnabled(false);
     try{
-        const res=await fetch(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:'tutorial'})});
+        const res=await fetchWithTimeout(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:'tutorial'})});
         if(!res.ok) throw new Error('Erro '+res.status);
         const data=await res.json();
         state.tutorialBalls=data.tutorialBalls;
@@ -485,7 +504,7 @@ async function attemptCatch(ballKey,retryCount=0){
     if((state.inventory[ballKey]||0)<=0) return;
     setEncounterButtonsEnabled(false);
     try{
-        const res=await fetch(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:ballKey})});
+        const res=await fetchWithTimeout(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:ballKey})});
         if(!res.ok) throw new Error('Erro '+res.status);
         const data=await res.json();
         state.inventory={...state.inventory,...data.newInventory};
@@ -536,15 +555,15 @@ function renderShopItems(){
     }
 }
 function openShop(){ setGamePaused(true); shopTab='balls'; document.getElementById('tabBalls').classList.add('active'); document.getElementById('tabBuffs').classList.remove('active'); renderShopItems(); document.getElementById('shopModal').classList.remove('hidden'); }
-async function buyBall(k){ const ball=ballDefs[k]; if(!ball) return; if(!confirm(`Comprar ${ball.name} por ${ball.cost.toFixed(2)} GRAM?`)) return; try{ const res=await fetch(API_URL+'/api/buy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({ballType:k})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.inventory=data.newInventory; updateBalance(); updateBallIndicator(); SOUND.transaction(); showToast(`${ball.name} comprada!`,'success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } }
-async function buyBuff(k){ if(k==='shinyCharm'){ if(!confirm('Comprar Shiny Charm por 1 GRAM? Duração: 3 horas.')) return; const cost=1; if(state.balance<cost){ showToast('Saldo insuficiente','error'); return; } state.balance-=cost; state.shinyCharmEnd=Date.now()+3*60*60*1000; updateBalance(); updateShinyCharmHUD(); SOUND.transaction(); showToast('✨ Shiny Charm ativado! 3 horas de caça!','success'); renderShopItems(); } else if(k==='battlePass'){ if(isBattlePassActive()){ showToast('Você já possui um Passe de Batalha ativo.','error'); return; } if(!confirm('Comprar Passe de Batalha por 3 GRAM? 30 dias de recompensas.')) return; try{ const res=await fetch(API_URL+'/api/buy-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.battlePassActive=true; state.battlePassEnd=Date.now()+30*24*60*60*1000; state.battlePassPoints=0; updateBalance(); SOUND.transaction(); showToast('🎫 Passe de Batalha ativado!','success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } } }
+async function buyBall(k){ const ball=ballDefs[k]; if(!ball) return; if(!confirm(`Comprar ${ball.name} por ${ball.cost.toFixed(2)} GRAM?`)) return; try{ const res=await fetchWithTimeout(API_URL+'/api/buy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({ballType:k})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.inventory=data.newInventory; updateBalance(); updateBallIndicator(); SOUND.transaction(); showToast(`${ball.name} comprada!`,'success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } }
+async function buyBuff(k){ if(k==='shinyCharm'){ if(!confirm('Comprar Shiny Charm por 1 GRAM? Duração: 3 horas.')) return; const cost=1; if(state.balance<cost){ showToast('Saldo insuficiente','error'); return; } state.balance-=cost; state.shinyCharmEnd=Date.now()+3*60*60*1000; updateBalance(); updateShinyCharmHUD(); SOUND.transaction(); showToast('✨ Shiny Charm ativado! 3 horas de caça!','success'); renderShopItems(); } else if(k==='battlePass'){ if(isBattlePassActive()){ showToast('Você já possui um Passe de Batalha ativo.','error'); return; } if(!confirm('Comprar Passe de Batalha por 3 GRAM? 30 dias de recompensas.')) return; try{ const res=await fetchWithTimeout(API_URL+'/api/buy-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.battlePassActive=true; state.battlePassEnd=Date.now()+30*24*60*60*1000; state.battlePassPoints=0; updateBalance(); SOUND.transaction(); showToast('🎫 Passe de Batalha ativado!','success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } } }
 function closeShop(){ setGamePaused(false); document.getElementById('shopModal').classList.add('hidden'); }
 
-// ==================== PASSE DE BATALHA (com tratamento de erro) ====================
+// ==================== PASSE DE BATALHA (com timeout e fallback) ====================
 async function openBattlePass(){ 
     setGamePaused(true); 
     try {
-        const res = await fetch(API_URL+'/api/battlepass',{headers:{'Authorization':getAuthHeader()}});
+        const res = await fetchWithTimeout(API_URL+'/api/battlepass',{headers:{'Authorization':getAuthHeader()}});
         const data = await res.json(); 
         if(!res.ok) throw new Error(data.error);
         if(!data.active){
@@ -572,7 +591,7 @@ async function openBattlePass(){
 }
 async function claimBP(level){
     try{
-        const res=await fetch(API_URL+'/api/claim-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({level})});
+        const res=await fetchWithTimeout(API_URL+'/api/claim-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({level})});
         const data=await res.json();
         if(!res.ok) throw new Error(data.error);
         showToast(`🎁 Você ganhou: ${data.reward}!`,'success');
@@ -624,7 +643,7 @@ function updateCollectionUI(){
 async function sellPokemon(id){
     if(!confirm('Tem certeza? Pokémon aposentado rende apenas 0.01 GRAM. Recomendado apenas para liberar espaço.')) return;
     try{
-        const res=await fetch(`${API_URL}/api/sell-pokemon/${id}`,{method:'POST',headers:{'Authorization':getAuthHeader()}});
+        const res=await fetchWithTimeout(`${API_URL}/api/sell-pokemon/${id}`,{method:'POST',headers:{'Authorization':getAuthHeader()}});
         const data=await res.json(); if(!res.ok) throw new Error(data.error);
         state.balance=data.newBalance; updateBalance();
         showToast('Pokémon vendido por 0.01 GRAM','success'); updateCollectionUI();
@@ -632,7 +651,7 @@ async function sellPokemon(id){
 }
 async function claimCreature(idx){
     try{
-        const res=await fetch(`${API_URL}/api/collect/${idx}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
+        const res=await fetchWithTimeout(`${API_URL}/api/collect/${idx}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
         const data=await res.json(); if(!res.ok) throw new Error(data.error);
         state.balance=data.newBalance;
         if(data.collected>0){
@@ -646,7 +665,7 @@ async function claimCreature(idx){
 }
 async function collectAll(){
     try{
-        const res=await fetch(`${API_URL}/api/collect-all`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
+        const res=await fetchWithTimeout(`${API_URL}/api/collect-all`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
         const data=await res.json(); if(!res.ok) throw new Error(data.error);
         state.balance=data.newBalance;
         if(data.collected>0){
@@ -658,7 +677,7 @@ async function collectAll(){
 }
 async function buyStorageExpansion(){
     try{
-        const res=await fetch(`${API_URL}/api/expand-storage`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
+        const res=await fetchWithTimeout(`${API_URL}/api/expand-storage`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}});
         const data=await res.json(); if(!res.ok) throw new Error(data.error);
         state.balance=data.newBalance; state.storageBoxes=data.storageBoxes;
         updateBalance(); updateCollectionUI(); showToast(`⬆️ Expansão comprada! Boxes: ${state.storageBoxes}`,'success');
@@ -674,7 +693,7 @@ async function submitDeposit(){
     const amt=parseFloat(rawAmt);
     if(!tx||isNaN(amt)||amt<0.2){ showToast('Preencha corretamente (mín. 0.2 GRAM)','error'); return; }
     try{
-        const res=await fetch(API_URL+'/api/deposit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,txHash:tx})});
+        const res=await fetchWithTimeout(API_URL+'/api/deposit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,txHash:tx})});
         const data=await res.json();
         if(res.ok){ showToast('Depósito registrado! Aguarde a confirmação.','success'); document.getElementById('depositStatus').innerHTML='⏳ Pendente de aprovação.'; }
         else showToast(data.error||'Erro no depósito','error');
@@ -705,7 +724,7 @@ async function withdraw(){
     if(isNaN(amt)||amt<2){ showToast('Mínimo 2 GRAM','error'); return; }
     if(amt>state.balance){ showToast('Saldo insuficiente','error'); return; }
     try{
-        const res=await fetch(API_URL+'/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,walletAddress:wallet})});
+        const res=await fetchWithTimeout(API_URL+'/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,walletAddress:wallet})});
         const data=await res.json();
         if(res.ok){
             state.balance=data.newBalance; updateBalance();
@@ -716,11 +735,11 @@ async function withdraw(){
 }
 function closeWithdraw(){ setGamePaused(false); document.getElementById('withdrawModal').classList.add('hidden'); }
 
-// ==================== REFERRAL (com tratamento de erro) ====================
+// ==================== REFERRAL (com timeout e fallback) ====================
 async function openReferral(){
     setGamePaused(true);
     try {
-        const res = await fetch(API_URL+'/api/referral',{headers:{'Authorization':getAuthHeader()}});
+        const res = await fetchWithTimeout(API_URL+'/api/referral',{headers:{'Authorization':getAuthHeader()}});
         if(!res.ok) throw new Error('Erro '+res.status);
         const data = await res.json();
         document.getElementById('refLink').textContent = data.referralLink;
