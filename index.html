@@ -119,7 +119,6 @@
             box-shadow: 2px 2px 0 #000; cursor: pointer;
         }
         .brl-info { font-size:0.45rem; color:#aaccff; }
-        /* Referral list scrolling */
         .referral-list { max-height:180px; overflow-y:auto; text-align:left; margin-top:8px; scrollbar-width:thin; }
         .referral-item { padding:6px 0; border-bottom:1px solid #3a4a5e; display:flex; justify-content:space-between; font-size:0.45rem; }
     </style>
@@ -157,7 +156,6 @@
         </div>
     </div>
 
-    <!-- TUTORIAL MODALS (iguais) -->
     <div class="modal-overlay hidden" id="tutorialIntroModal">
         <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel" id="tutorialSkipBtn" onclick="skipTutorial()">Pular</button></div>
     </div>
@@ -165,7 +163,6 @@
         <div class="modal-pixel"><h3>🎁 Tutorial</h3><p>Bem-vindo! Agora é com você.</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar!</button></div>
     </div>
 
-    <!-- ENCONTRO / BATALHA -->
     <div class="modal-overlay hidden" id="encounterModal">
         <div class="modal-pixel" style="padding:0; overflow:hidden;">
             <button class="modal-close" id="encounterCloseBtn" onclick="fleeEncounter()">✕</button>
@@ -185,7 +182,6 @@
         </div>
     </div>
 
-    <!-- SHOP -->
     <div class="modal-overlay hidden" id="shopModal">
         <div class="modal-pixel">
             <button class="modal-close" onclick="closeShop()">✕</button><h3>🎒 Loja</h3>
@@ -195,7 +191,6 @@
         </div>
     </div>
 
-    <!-- COLLECTION -->
     <div class="modal-overlay hidden" id="collectionModal">
         <div class="modal-pixel" style="max-width:400px;">
             <button class="modal-close" onclick="closeCollection()">✕</button><h3>🖥️ PC Storage</h3>
@@ -207,7 +202,6 @@
         </div>
     </div>
 
-    <!-- DEPOSIT / WITHDRAW -->
     <div class="modal-overlay hidden" id="depositModal">
         <div class="modal-pixel">
             <button class="modal-close" onclick="closeDeposit()">✕</button><h3>📥 Depósito (TON)</h3>
@@ -234,7 +228,6 @@
         </div>
     </div>
 
-    <!-- REFERRAL MODAL -->
     <div class="modal-overlay hidden" id="referralModal">
         <div class="modal-pixel" style="max-width:420px;">
             <button class="modal-close" onclick="closeReferral()">✕</button>
@@ -250,7 +243,7 @@
             <div style="margin-top:18px;">
                 <h4 style="font-size:0.6rem;">Seus Indicados (<span id="refCount">0</span>)</h4>
                 <div class="referral-list" id="referralList">
-                    <!-- preenchido via JS -->
+                    <!-- JS preenche -->
                 </div>
                 <p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission">0.00 GRAM</strong></p>
             </div>
@@ -398,7 +391,9 @@ function updateProductionHUD() {
     document.getElementById('productionHud').textContent = `⚡ ${getProductionPerSecond().toFixed(6)} GRAM/s`;
 }
 
-function copyWallet() { /* ... */ }
+function copyWallet() {
+    navigator.clipboard.writeText(document.getElementById('walletAddressText').textContent).then(() => showToast('Carteira copiada!', 'success')).catch(() => showToast('Falha ao copiar', 'error'));
+}
 
 // ==================== TUTORIAL ====================
 let tutorialStep = 0;
@@ -455,7 +450,20 @@ function initGameCanvas(){
 window.addEventListener('resize', () => { if (state.gameStarted) { initGameCanvas(); state.playerX = Math.min(state.mapWidth-10, Math.max(10, state.playerX)); state.playerY = Math.min(state.mapHeight-10, Math.max(10, state.playerY)); } });
 function generateGrass(){ state.grassPatches=Array.from({length:20},()=>({x:Math.random()*(state.mapWidth-80),y:Math.random()*(state.mapHeight-60),w:55+Math.random()*55,h:30+Math.random()*45})); }
 function isInGrass(x,y){ return state.grassPatches.some(p=>x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h); }
-function drawMap(ctx,w,h){ /* ... código original ... */ }
+
+function drawMap(ctx,w,h){
+    const camX=state.playerX-w/2, camY=state.playerY-h/2;
+    ctx.save(); ctx.translate(-camX,-camY);
+    ctx.fillStyle='#9cc86a'; ctx.fillRect(0,0,state.mapWidth,state.mapHeight);
+    ctx.fillStyle='#e8dcc0'; ctx.fillRect(0,state.mapHeight*0.44,state.mapWidth,32);
+    state.grassPatches.forEach(p=>{ for(let gx=p.x;gx<p.x+p.w;gx+=7) for(let gy=p.y;gy<p.y+p.h;gy+=7) ctx.fillStyle=((gx+gy)%14<7)?'#5a9c3f':'#4a8c2f', ctx.fillRect(gx,gy,7,7); });
+    const bx=state.playerX, by=state.playerY+(state.joystickActive&&state.frameCounter%8<4?2:0);
+    ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(bx, by+10, 14, 7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#c8a050'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(bx, by-8, 12, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#fff8'; ctx.beginPath(); ctx.arc(bx, by-8, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#5a3a1a'; ctx.fillRect(bx+10, by-2, 4, 16); ctx.fillStyle='#8a5a3a'; ctx.fillRect(bx+11, by-4, 2, 20);
+    ctx.restore();
+}
 
 function startGameLoop() {
     if (!state.gameStarted || state.animationId) return;
@@ -504,7 +512,15 @@ function setEncounterButtonsEnabled(enabled) {
     document.getElementById('encounterFleeBtn').disabled = !enabled;
     state.isCaptureAnimating = !enabled;
 }
-function drawBattleScene(ctx){ /* ... original ... */ }
+function drawBattleScene(ctx){
+    const w=320,h=280;
+    ctx.clearRect(0,0,w,h);
+    const sky=ctx.createLinearGradient(0,0,0,h*0.55);
+    sky.addColorStop(0,'#5b9ecf'); sky.addColorStop(1,'#a3cef1');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.55);
+    ctx.fillStyle='#c8b878'; ctx.fillRect(0,h*0.55,w,h*0.45);
+    ctx.strokeStyle='#908050'; ctx.beginPath(); ctx.ellipse(w*0.35, h*0.52, 80, 28, 0, 0, Math.PI*2); ctx.stroke();
+}
 
 async function triggerEncounter(){
     if(state.isEncounterActive || isStorageFull()) return;
@@ -533,12 +549,57 @@ async function triggerEncounter(){
     }
 }
 
-function animateBattle(){ /* ... similar ao original, mas usando battleState.encounterData.name etc. ... */ }
+function animateBattle(){
+    if(!state.isEncounterActive) return;
+    const canvas=document.getElementById('battleCanvas'), ctx=canvas.getContext('2d'), w=320,h=280;
+    drawBattleScene(ctx);
+    const enc = battleState.encounterData;
+    if(!enc) return;
+    const img=state.battleImg;
+    if(img&&img.complete&&img.naturalWidth>0){
+        let px=w*0.35, py=h*0.38, scale=1;
+        if(battleState.phase==='appear'){
+            battleState.timer+=0.07;
+            if(battleState.timer<1){ px=w*0.35-(1-battleState.timer)*80; scale=0.4+battleState.timer*0.6; }
+            else{ battleState.phase='idle'; battleState.idleTime=0; document.getElementById('battleText').innerHTML=`<b>${enc.name}</b> apareceu!`; generateBallGrid(); setEncounterButtonsEnabled(true); }
+        } else if(battleState.phase==='idle'){
+            battleState.idleTime++;
+            py+=Math.sin(battleState.idleTime*0.08)*2.5;
+        }
+        ctx.save(); ctx.translate(px,py); ctx.scale(scale,scale);
+        if (enc.shiny) { ctx.shadowColor = '#ff79c6'; ctx.shadowBlur = 30; }
+        else if (enc.rarity === 'legendary') { ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 25; }
+        else if (enc.rarity === 'epic') { ctx.shadowColor = '#9b59b6'; ctx.shadowBlur = 15; }
+        else if (enc.rarity === 'rare') { ctx.shadowColor = '#4a90d9'; ctx.shadowBlur = 10; }
+        ctx.drawImage(img,-40,-40,80,80);
+        ctx.restore();
+        const rarityColors={common:'#8a8a8a',rare:'#4a90d9',epic:'#9b59b6',legendary:'#f1c40f'};
+        ctx.font='bold 10px "Press Start 2P"'; ctx.fillStyle='#000'; ctx.fillText(enc.rarity.toUpperCase(), px-50, py-60);
+        ctx.fillStyle=rarityColors[enc.rarity]; ctx.fillText(enc.rarity.toUpperCase(), px-48, py-58);
+    }
+    if(battleState.phase==='capture'){
+        battleState.timer+=0.5;
+        if(battleState.timer>18&&battleState.shakes<4){
+            battleState.shakes++; SOUND.captureShake(); battleState.timer=0;
+            if(battleState.shakes===4){
+                if(battleState.success){
+                    SOUND.captureSuccess();
+                    // Sucesso tratado em attemptCatch
+                } else {
+                    SOUND.captureFail();
+                    document.getElementById('battleText').innerHTML='<b>Escapou!</b> 😢';
+                    setTimeout(()=>{ closeEncounter(); resetJoystick(); },1400);
+                }
+                return;
+            }
+        }
+    }
+    battleState.animId=requestAnimationFrame(animateBattle);
+}
 
 function generateBallGrid(){
     const grid=document.getElementById('ballGridContainer'); grid.innerHTML='';
     const enc = battleState.encounterData; if(!enc) return;
-    // Tutorial ball (sempre falha)
     if(state.tutorialBalls>0) {
         const slot=document.createElement('div'); slot.className='ball-slot';
         slot.innerHTML=`<img src="${ITEM_SPRITE}poke-ball.png" style="width:36px;height:36px;"><span>Pokébola Iniciante</span><small>x${state.tutorialBalls}</small><small style="color:#ffd700;">2%</small>`;
@@ -620,25 +681,171 @@ function closeEncounter(){ document.getElementById('encounterModal').classList.a
 function closeCatchResult(){ resetJoystick(); document.getElementById('catchResultModal').classList.add('hidden'); }
 
 // ==================== LOJA, COLEÇÃO, DEPÓSITO, SAQUE ====================
-function openShop(){ /* igual ao anterior */ }
-async function buyBall(k){ /* usa endpoint buy, atualiza state com newBalance/newInventory */ }
-function closeShop(){ /* ... */ }
+function openShop(){
+    const container=document.getElementById('shopItems');
+    container.innerHTML = Object.entries(ballDefs).map(([k,b])=>`<div class="ball-slot"><img src="${ITEM_SPRITE}${b.item}" style="width:40px;height:40px;"><b>${b.name}</b><span>${b.cost.toFixed(2)} GRAM</span><span class="brl-info">≈ R$ ${(b.cost*tonPriceBRL).toFixed(2)}</span><button class="btn-pixel blue small" onclick="buyBall('${k}')">Comprar</button></div>`).join('');
+    document.getElementById('shopModal').classList.remove('hidden');
+}
+async function buyBall(k){
+    try {
+        const res = await fetch(API_URL+'/api/buy', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({ ballType: k })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        state.balance = data.newBalance;
+        state.inventory = data.newInventory;
+        updateBalance();
+        updateBallIndicator();
+        SOUND.transaction();
+        showToast(`${ballDefs[k].name} comprada!`,'success');
+        openShop();
+    } catch(e) { showToast(e.message,'error'); }
+}
+function closeShop(){ document.getElementById('shopModal').classList.add('hidden'); }
 
 function openCollection(){ updateCollectionUI(); document.getElementById('collectionModal').classList.remove('hidden'); }
-function updateCollectionUI(){ /* igual */ }
+function updateCollectionUI(){
+    const grid=document.getElementById('pcBoxGrid'); grid.innerHTML='';
+    const start = state.currentBox * 12, end = start + 12;
+    const boxPokemons = state.collection.slice(start, end);
+    for(let i=0;i<12;i++){
+        const slot=document.createElement('div'); slot.className='pc-slot';
+        if(i<boxPokemons.length){
+            const c=boxPokemons[i];
+            const elapsedSec = (Date.now()-new Date(c.caughtAt).getTime())/1000;
+            const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400);
+            const claimable = Math.max(0, earned - c.claimed);
+            const progress = Math.min(100, (earned / c.roiTotal)*100);
+            slot.innerHTML = `<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:44px;height:44px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">${(c.dailyProduction/86400).toFixed(6)} GRAM/s</span><span class="pc-claim">💰 ${claimable.toFixed(2)} GRAM</span>`;
+            const idx = start + i;
+            slot.onclick=()=>{ claimCreature(idx); };
+        } else slot.innerHTML='<span style="opacity:0.2;">∅</span>';
+        grid.appendChild(slot);
+    }
+    document.getElementById('storageProduction').textContent = `⚡ Produção total: ${getProductionPerSecond().toFixed(6)} GRAM/s`;
+    const totalAcum = state.collection.reduce((sum,c)=>{ const elapsedSec = (Date.now()-new Date(c.caughtAt).getTime())/1000; const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400); return sum + Math.max(0, earned - c.claimed); },0);
+    document.getElementById('storageTotal').textContent = `💰 Disponível para coleta: ${totalAcum.toFixed(2)} GRAM`;
+    const tabs=document.getElementById('boxTabs'); tabs.innerHTML='';
+    for(let i=0;i<state.storageBoxes;i++){ const btn=document.createElement('button'); btn.className='tab-btn'+(i===state.currentBox?' active':''); btn.textContent=`Box ${i+1}`; btn.onclick=()=>{ state.currentBox=i; updateCollectionUI(); }; tabs.appendChild(btn); }
+    const expansionCost = state.storageBoxes * 10;
+    document.getElementById('btnExpandStorage').style.display = state.storageBoxes >= 11 ? 'none' : 'block';
+    document.getElementById('btnExpandStorage').textContent = `📦 Expansão (${expansionCost} GRAM)`;
+}
+async function claimCreature(idx){
+    try {
+        const res = await fetch(`${API_URL}/api/collect/${idx}`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        state.balance = data.newBalance;
+        if (data.collected > 0) {
+            state.collection[idx].claimed += data.collected;
+            updateBalance();
+            showToast(`+${data.collected.toFixed(2)} GRAM coletado!`,'success');
+        }
+        updateCollectionUI();
+    } catch(e) { showToast(e.message,'error'); }
+}
+async function collectAll(){
+    try {
+        const res = await fetch(`${API_URL}/api/collect-all`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        state.balance = data.newBalance;
+        if (data.collected > 0) {
+            state.collection.forEach(c => {
+                const elapsedSec = (Date.now() - new Date(c.caughtAt).getTime())/1000;
+                const earned = Math.min(c.roiTotal, c.dailyProduction * elapsedSec / 86400);
+                c.claimed = earned;
+            });
+            updateBalance();
+            showToast(`Coletado ${data.collected.toFixed(2)} GRAM!`,'success');
+        } else showToast('Nada para coletar','error');
+        updateCollectionUI();
+    } catch(e) { showToast(e.message,'error'); }
+}
+async function buyStorageExpansion(){
+    try {
+        const res = await fetch(`${API_URL}/api/expand-storage`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        state.balance = data.newBalance;
+        state.storageBoxes = data.storageBoxes;
+        updateBalance();
+        updateCollectionUI();
+        showToast(`Expansão comprada! Boxes: ${state.storageBoxes}`,'success');
+    } catch(e) { showToast(e.message,'error'); }
+}
+function closeCollection(){ resetJoystick(); document.getElementById('collectionModal').classList.add('hidden'); }
 
-async function claimCreature(idx){ /* endpoint collect/:index */ }
-async function collectAll(){ /* endpoint collect-all */ }
-async function buyStorageExpansion(){ /* endpoint expand-storage */ }
-function closeCollection(){ /* ... */ }
+function openDeposit(){
+    document.getElementById('depositTxHash').value='';
+    document.getElementById('depositAmount').value='';
+    document.getElementById('depositStatus').innerHTML='';
+    document.getElementById('depositModal').classList.remove('hidden');
+}
+async function submitDeposit(){
+    const tx = document.getElementById('depositTxHash').value.trim();
+    let rawAmt = document.getElementById('depositAmount').value.replace(',', '.');
+    const amt = parseFloat(rawAmt);
+    if(!tx || isNaN(amt) || amt < 0.2){ showToast('Preencha corretamente (mín. 0.2 TON)','error'); return; }
+    try {
+        const res = await fetch(API_URL+'/api/deposit', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({ amount: amt, txHash: tx })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('Depósito registrado! Aguarde a confirmação.', 'success');
+            document.getElementById('depositStatus').innerHTML = '⏳ Pendente de aprovação.';
+        } else showToast(data.error || 'Erro no depósito', 'error');
+    } catch (e) { showToast('Erro de conexão', 'error'); }
+}
+function closeDeposit(){ document.getElementById('depositModal').classList.add('hidden'); }
 
-function openDeposit(){ /* ... */ }
-async function submitDeposit(){ /* ... */ }
-function closeDeposit(){ /* ... */ }
-
-function openWithdraw(){ /* ... */ }
-async function withdraw(){ /* ... */ }
-function closeWithdraw(){ /* ... */ }
+function openWithdraw(){
+    document.getElementById('withdrawBalance').textContent=state.balance.toFixed(2);
+    document.getElementById('withdrawAmount').value='';
+    document.getElementById('walletAddress').value='';
+    document.getElementById('receiveAmount').textContent='0.00';
+    document.getElementById('withdrawStatus').innerHTML='';
+    document.getElementById('withdrawModal').classList.remove('hidden');
+}
+document.getElementById('withdrawAmount').addEventListener('input',function(){ const v=parseFloat(this.value.replace(',','.'))||0; document.getElementById('receiveAmount').textContent=(v*0.95).toFixed(2); });
+async function withdraw(){
+    const amt=parseFloat(document.getElementById('withdrawAmount').value.replace(',','.'));
+    const wallet=document.getElementById('walletAddress').value.trim();
+    if(!wallet){ showToast('Carteira TON obrigatória','error'); return; }
+    if(isNaN(amt)||amt<2){ showToast('Mínimo 2 GRAM','error'); return; }
+    if(amt>state.balance){ showToast('Saldo insuficiente','error'); return; }
+    try {
+        const res = await fetch(API_URL+'/api/withdraw', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({ amount: amt, walletAddress: wallet })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            state.balance = data.newBalance;
+            updateBalance();
+            showToast('Saque solicitado! Processaremos em breve.', 'success');
+            document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.';
+        } else showToast(data.error || 'Erro no saque', 'error');
+    } catch (e) { showToast('Erro de conexão', 'error'); }
+}
+function closeWithdraw(){ document.getElementById('withdrawModal').classList.add('hidden'); }
 
 // ==================== REFERRAL ====================
 async function openReferral() {
@@ -673,8 +880,22 @@ function shareReferral() {
 }
 function closeReferral() { document.getElementById('referralModal').classList.add('hidden'); }
 
-// ==================== JOYSTICK + TECLADO (inalterado) ====================
-// ...
+// ==================== JOYSTICK + TECLADO ====================
+const keys = {};
+(function(){
+    const zone = document.getElementById('joystickZone'), thumb = document.getElementById('joystickThumb');
+    let active = false, currentTouchId = null;
+    function isInputFocused() { const el=document.activeElement; return el && (el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA'||el.isContentEditable); }
+    function updateFromInput(dx,dy,maxDist=36){ if(!state.gameStarted||state.isEncounterActive) return; state.joystickDX=dx; state.joystickDY=dy; state.joystickActive=true; thumb.style.transform=`translate(calc(-50% + ${dx*maxDist}px), calc(-50% + ${dy*maxDist}px))`; }
+    function resetInput(){ state.joystickActive=false; state.joystickDX=0; state.joystickDY=0; thumb.style.transform='translate(-50%,-50%)'; }
+    function handleStart(e){ if(!state.gameStarted||state.isEncounterActive||isInputFocused()) return; e.preventDefault(); if(e.touches) currentTouchId=e.touches[0].identifier; active=true; handleMove(e); }
+    function handleMove(e){ if(!active) return; e.preventDefault(); let clientX,clientY; if(e.touches){ for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ clientX=e.touches[i].clientX; clientY=e.touches[i].clientY; break; } } if(clientX===undefined) return; } else { clientX=e.clientX; clientY=e.clientY; } const rect=zone.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2; let dx=clientX-cx, dy=clientY-cy; const dist=Math.hypot(dx,dy), maxDist=36; if(dist>0.01){ dx=(dx/dist)*Math.min(dist,maxDist); dy=(dy/dist)*Math.min(dist,maxDist); } updateFromInput(dx/maxDist, dy/maxDist); }
+    function handleEnd(e){ if(!active) return; if(e.touches){ let found=false; for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ found=true; break; } } if(found) return; } active=false; currentTouchId=null; resetInput(); }
+    zone.addEventListener('touchstart',handleStart,{passive:false}); zone.addEventListener('touchmove',handleMove,{passive:false}); zone.addEventListener('touchend',handleEnd); zone.addEventListener('touchcancel',handleEnd);
+    zone.addEventListener('mousedown',handleStart); window.addEventListener('mousemove',(e)=>{ if(active) handleMove(e); }); window.addEventListener('mouseup',handleEnd);
+    window.addEventListener('keydown', (e) => { if(isInputFocused()) return; if(!state.gameStarted||state.isEncounterActive) return; keys[e.key]=true; e.preventDefault(); let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } });
+    window.addEventListener('keyup', (e) => { if(isInputFocused()) return; keys[e.key]=false; if(!keys['ArrowLeft']&&!keys['a']&&!keys['ArrowRight']&&!keys['d']&&!keys['ArrowUp']&&!keys['w']&&!keys['ArrowDown']&&!keys['s']){ resetInput(); } else { let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } } });
+})();
 
 // ==================== INICIALIZAÇÃO ====================
 async function startGame() {
@@ -685,7 +906,22 @@ async function startGame() {
     if (saveInterval) clearInterval(saveInterval);
     saveInterval = setInterval(saveState, 30000);
 }
-function goToScreen(id) { /* ... */ }
+function goToScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => { s.classList.add('hidden'); s.classList.remove('active'); });
+    const target = document.getElementById(id);
+    if (target) { target.classList.remove('hidden'); target.classList.add('active'); }
+    if (id === 'gameScreen') {
+        initGameCanvas();
+        document.getElementById('gameControls').classList.add('visible');
+        state.gameStarted = true;
+        if (!state.animationId) startGameLoop();
+        if (!state.tutorialDone) {
+            setTimeout(() => startIntroTutorial(), 500);
+        }
+    } else {
+        if (state.animationId) { cancelAnimationFrame(state.animationId); state.animationId = null; }
+    }
+}
 
 window.addEventListener('load', ()=>{
     document.getElementById('loadingBar').style.width='100%';
