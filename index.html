@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    <!-- Modais (presentes e corrigidos) -->
+    <!-- Modais -->
     <div class="modal-overlay hidden" id="tutorialIntroModal"><div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div></div>
     <div class="modal-overlay hidden" id="tutorialModal"><div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Escolher Treinador</button></div></div>
     <div class="modal-overlay hidden" id="trainerModal"><div class="modal-pixel golden"><h3>🧢 Escolha seu Treinador</h3><p style="font-size:0.5rem;">Quem vai explorar o mundo?</p><div class="trainer-select"><div class="trainer-option selected" id="trainerRed" onclick="selectTrainer('red')"><img src="https://play.pokemonshowdown.com/sprites/trainers/red.png" alt="Red"><span>Red</span></div><div class="trainer-option" id="trainerMay" onclick="selectTrainer('may')"><img src="https://play.pokemonshowdown.com/sprites/trainers/may.png" alt="May"><span>May</span></div></div><button class="btn-pixel gold" onclick="confirmTrainer()">Começar Aventura!</button></div></div>
@@ -376,7 +376,7 @@ async function attemptCatchTutorial(retryCount=0){
         const res = await fetch(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:'tutorial'})});
         if(!res.ok)throw new Error('Erro '+res.status);
         const data = await res.json();
-        state.tutorialBalls = data.tutorialBalls; // atualiza apenas as tutorial balls
+        state.tutorialBalls = data.tutorialBalls;
         updateBallIndicator();
         saveState();
         document.getElementById('battleText').innerHTML='<b>A Pokébola de iniciante falhou...</b>';
