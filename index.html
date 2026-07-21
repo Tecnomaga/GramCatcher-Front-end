@@ -154,10 +154,10 @@
     </div>
 
     <div class="modal-overlay hidden" id="tutorialIntroModal">
-        <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel" onclick="skipTutorial()">Pular</button></div>
+        <div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel" id="tutorialSkipBtn" onclick="skipTutorial()">Pular</button></div>
     </div>
     <div class="modal-overlay hidden" id="tutorialModal">
-        <div class="modal-pixel"><h3>🎁 Presente Inicial</h3><p>5 Pokébolas de Iniciante!</p><button class="btn-pixel gold" onclick="closeTutorial()">Começar!</button></div>
+        <div class="modal-pixel"><h3>🎁 Presente Inicial</h3><p>5 Pokébolas de Iniciante!</p><button class="btn-pixel gold" onclick="finishTutorial()">Começar!</button></div>
     </div>
     <div class="modal-overlay hidden" id="encounterModal">
         <div class="modal-pixel" style="padding:0; overflow:hidden;">
@@ -308,17 +308,44 @@ const tutorialSteps = [
     { title:'🔴 Pokébolas', text:'Compre Pokébolas na <span style="color:#ffd700;">Loja</span> com seus GRAM minerados.' },
     { title:'📦 PC Storage', text:'Os Pokémon capturados produzem GRAM automaticamente. Colete os ganhos quando quiser!' }
 ];
-function startIntroTutorial() { tutorialStep=0; state.tutorialDone=true; saveGame(); renderTutorialStep(); document.getElementById('tutorialIntroModal').classList.remove('hidden'); }
+
+function startIntroTutorial() {
+    tutorialStep = 0;
+    renderTutorialStep();
+    document.getElementById('tutorialIntroModal').classList.remove('hidden');
+}
+
 function renderTutorialStep() {
     const s = tutorialSteps[tutorialStep];
     document.getElementById('tutorialStepContent').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px;">${s.title}</h3><p class="tutorial-text">${s.text}</p>`;
     document.getElementById('tutorialDots').innerHTML = tutorialSteps.map((_,i) => `<span class="step-dot ${i===tutorialStep?'active':''}"></span>`).join('');
-    document.getElementById('tutorialNextBtn').textContent = tutorialStep < tutorialSteps.length-1 ? 'Próximo ▶' : 'Começar! 🚀';
+    const btn = document.getElementById('tutorialNextBtn');
+    btn.textContent = tutorialStep < tutorialSteps.length-1 ? 'Próximo ▶' : 'Concluir 🎉';
 }
-function nextTutorialStep() { if (tutorialStep < tutorialSteps.length-1) { tutorialStep++; renderTutorialStep(); } else { document.getElementById('tutorialIntroModal').classList.add('hidden'); setTimeout(()=>showTutorial(),300); } }
-function skipTutorial() { document.getElementById('tutorialIntroModal').classList.add('hidden'); state.tutorialDone=true; saveGame(); setTimeout(()=>showTutorial(),300); }
-function closeTutorial() { document.getElementById('tutorialModal').classList.add('hidden'); }
-function showTutorial() { document.getElementById('tutorialModal').classList.remove('hidden'); }
+
+function nextTutorialStep() {
+    if (tutorialStep < tutorialSteps.length-1) {
+        tutorialStep++;
+        renderTutorialStep();
+    } else {
+        document.getElementById('tutorialIntroModal').classList.add('hidden');
+        state.tutorialDone = true;
+        saveGame();
+        setTimeout(() => document.getElementById('tutorialModal').classList.remove('hidden'), 300);
+    }
+}
+
+function skipTutorial() {
+    document.getElementById('tutorialIntroModal').classList.add('hidden');
+    state.tutorialDone = true;
+    saveGame();
+    setTimeout(() => document.getElementById('tutorialModal').classList.remove('hidden'), 300);
+}
+
+function finishTutorial() {
+    document.getElementById('tutorialModal').classList.add('hidden');
+    // Tutorial já foi marcado como concluído, apenas fecha o modal de presente.
+}
 
 // ==================== CANVAS E MAPA ====================
 function initGameCanvas(){
@@ -476,7 +503,6 @@ function generateBallGrid(){
             battleState.phase='capture'; battleState.shakes=0; battleState.timer=0;
             battleState.success=state.currentEncounter.shiny || Math.random()<0.02;
             document.getElementById('battleText').innerHTML='<b>Pokébola de iniciante...</b>';
-            if(state.tutorialBalls===0) { state.tutorialActive=false; saveGame(); setTimeout(()=> showTutorialEnd(), 800); }
         };
         grid.appendChild(slot);
     }
@@ -582,7 +608,6 @@ function buyStorageExpansion(){
 }
 function closeCollection(){ resetJoystick(); document.getElementById('collectionModal').classList.add('hidden'); }
 
-// ========== DEPÓSITO (TON para GRAM) ==========
 function openDeposit(){ document.getElementById('depositTxHash').value=''; document.getElementById('depositAmount').value=''; document.getElementById('depositStatus').innerHTML=''; document.getElementById('depositModal').classList.remove('hidden'); setTimeout(()=>{ const inp=document.getElementById('depositAmount'); if(inp) inp.focus({preventScroll:true}); },100); }
 async function submitDeposit(){
     const tx = document.getElementById('depositTxHash').value.trim();
@@ -599,14 +624,11 @@ async function submitDeposit(){
         if (res.ok) {
             showToast('Depósito registrado! Aguarde a confirmação.', 'success');
             document.getElementById('depositStatus').innerHTML = '⏳ Pendente de aprovação.';
-        } else {
-            showToast(data.error || 'Erro no depósito', 'error');
-        }
+        } else showToast(data.error || 'Erro no depósito', 'error');
     } catch (e) { showToast('Erro de conexão', 'error'); }
 }
 function closeDeposit(){ document.getElementById('depositModal').classList.add('hidden'); }
 
-// ========== SAQUE (GRAM para TON) ==========
 function openWithdraw(){ document.getElementById('withdrawBalance').textContent=state.balance.toFixed(2); document.getElementById('withdrawAmount').value=''; document.getElementById('walletAddress').value=''; document.getElementById('receiveAmount').textContent='0.00'; document.getElementById('withdrawStatus').innerHTML=''; document.getElementById('withdrawModal').classList.remove('hidden'); }
 document.getElementById('withdrawAmount').addEventListener('input',function(){ const v=parseFloat(this.value.replace(',','.'))||0; document.getElementById('receiveAmount').textContent=(v*0.95).toFixed(2); });
 async function withdraw(){
@@ -623,14 +645,11 @@ async function withdraw(){
         });
         const data = await res.json();
         if (res.ok) {
-            state.balance -= amt; // deduz localmente (backend já deduziu)
-            updateBalance();
-            saveGame();
+            state.balance -= amt;
+            updateBalance(); saveGame();
             showToast('Saque solicitado! Processaremos em breve.', 'success');
             document.getElementById('withdrawStatus').innerHTML = '⏳ Pendente de processamento.';
-        } else {
-            showToast(data.error || 'Erro no saque', 'error');
-        }
+        } else showToast(data.error || 'Erro no saque', 'error');
     } catch (e) { showToast('Erro de conexão', 'error'); }
 }
 function closeWithdraw(){ document.getElementById('withdrawModal').classList.add('hidden'); }
@@ -656,7 +675,13 @@ const keys = {};
 async function startGame() {
     state.username = currentUser.first_name || 'Tamer';
     await loadGame();
-    if (!state.tutorialDone && state.tutorialBalls===0 && state.collection.length===0) { state.tutorialBalls=5; state.tutorialActive=true; state.tutorialDone=false; await saveGame(); }
+    // Se for novo jogador (nunca fez tutorial e sem pokébolas)
+    if (!state.tutorialDone && state.tutorialBalls === 0 && state.collection.length === 0) {
+        state.tutorialBalls = 5;
+        state.tutorialActive = true;
+        // tutorialDone permanece false, pois ainda não concluiu
+        await saveGame();
+    }
     updateBalance(); updateBallIndicator(); updateProductionHUD();
     goToScreen('gameScreen');
 }
@@ -669,7 +694,10 @@ function goToScreen(id) {
         document.getElementById('gameControls').classList.add('visible');
         state.gameStarted = true;
         if (!state.animationId) startGameLoop();
-        if (!state.tutorialDone) setTimeout(() => startIntroTutorial(), 400);
+        // Exibir tutorial apenas se ainda não tiver sido concluído
+        if (!state.tutorialDone) {
+            setTimeout(() => startIntroTutorial(), 500);
+        }
     } else {
         if (state.animationId) { cancelAnimationFrame(state.animationId); state.animationId = null; }
     }
