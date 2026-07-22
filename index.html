@@ -362,7 +362,7 @@ let saveInterval = null;
 async function loadGame() {
     await loadGameConfig();
     try {
-        const startParam = tg.initDataUnsafe?.start_param || '';
+        const startParam = tg.initDataUnsafe?.start_param || window.location.hash.replace('#', '') || '';
         const r = await fetchWithTimeout(`${API_URL}/api/player?start_param=${encodeURIComponent(startParam)}`, { headers:{'Authorization':getAuthHeader()} });
         if (!r.ok) throw new Error('Erro ' + r.status);
         const d = await r.json();
