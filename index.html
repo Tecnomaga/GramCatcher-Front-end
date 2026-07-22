@@ -282,7 +282,7 @@ async function openLaunchPacks() {
         html += `<p style="font-size:0.4rem;">+${pack.balls.count} ${pack.balls.type}</p>`;
         html += `<p class="pack-price">💰 ${pack.price} GRAM</p>`;
         if (alreadyBought) {
-            html += `<button class="btn-pixel small" disabled>✅ Comprado</button>`;
+            html += `<button class="btn-pixel small" disabled style="background:#555;border-color:#444;">✅ Adquirido</button>`;
         } else {
             html += `<button class="btn-pixel gold small" onclick="buyLaunchPack('${p.key}')">Comprar</button>`;
         }
@@ -311,7 +311,7 @@ async function buyLaunchPack(packType) {
         updateBallIndicator();
         showToast(`${pack.name} comprado! 🎉`, 'success');
         closeLaunchPacks();
-        await loadGame();
+        setTimeout(() => openLaunchPacks(), 300);
     } catch(e) { showToast(e.message, 'error'); }
 }
 function closeLaunchPacks() {
