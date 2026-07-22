@@ -177,7 +177,6 @@
         </div>
     </div>
 
-    <!-- Modals (mantidos iguais, apenas adicionados ranking e hall) -->
     <div class="modal-overlay hidden" id="tutorialIntroModal"><div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div></div>
     <div class="modal-overlay hidden" id="tutorialModal"><div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Escolher Treinador</button></div></div>
     <div class="modal-overlay hidden" id="trainerModal"><div class="modal-pixel golden"><h3>🧢 Escolha seu Treinador</h3><p style="font-size:0.5rem;">Quem vai explorar o mundo?</p><div class="trainer-select"><div class="trainer-option selected" id="trainerRed" onclick="selectTrainer('red')"><img src="https://play.pokemonshowdown.com/sprites/trainers/red.png" alt="Red"><span>Red</span></div><div class="trainer-option" id="trainerMay" onclick="selectTrainer('may')"><img src="https://play.pokemonshowdown.com/sprites/trainers/may.png" alt="May"><span>May</span></div></div><div class="label-text" style="margin-top:10px;">📛 Seu nome no Ranking:</div><input class="input-pixel" type="text" id="displayNameInput" placeholder="Seu nome público" maxlength="20"><button class="btn-pixel gold" onclick="confirmTrainer()">Começar Aventura!</button></div></div>
@@ -202,10 +201,10 @@ function getAuthHeader() { return 'Telegram ' + tg.initData; }
 let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 123456, first_name: 'Dev' };
 const trainerSprites = { red: 'https://play.pokemonshowdown.com/sprites/trainers/red.png', may: 'https://play.pokemonshowdown.com/sprites/trainers/may.png' };
 const trainerImg = new Image();
-let selectedTrainer = localStorage.getItem('gramcatcher_trainer') || 'red';
-trainerImg.src = trainerSprites[selectedTrainer];
+let selectedTrainer = 'red';
 let lastDirection = 'down';
 let pokemonList = [], ballDefs = {}, roiData = {};
+let lastNotificationId = localStorage.getItem('gc_last_notif') || null;
 const buffDefs = {
     shinyCharm:{ name:'Shiny Charm', item:'shiny-charm.png', cost:1.0, duration:3*60*60*1000, description:'Dobra a chance de encontrar shiny!' },
     battlePass:{ name:'Passe de Batalha', item:'contest-pass.png', cost:3.0, duration:30*24*60*60*1000, description:'Complete 12 capturas. Expansão GRÁTIS!' }
@@ -248,7 +247,7 @@ updateTonPrice(); setInterval(updateTonPrice,60000);
 let state = {
     balance:0, inventory:{pokeball:0,greatball:0,ultraball:0,masterball:0,friendball:0},
     playerX:200,playerY:280, stepsSinceEncounter:0, frameCounter:0, collection:[],
-    username:'', displayName:'', photoUrl:'', gameStarted:false, joystickActive:false, joystickDX:0, joystickDY:0,
+    username:'', displayName:'', photoUrl:'', trainer:'red', gameStarted:false, joystickActive:false, joystickDX:0, joystickDY:0,
     currentEncounterId: null, isEncounterActive:false, mapWidth:500, mapHeight:460,
     grassPatches:[], battleImg:null, animationId:null, storageBoxes:1,
     tutorialBalls:0, tutorialActive:false, currentBox:0, lastProductionUpdate:Date.now(),
@@ -282,6 +281,9 @@ async function loadGame() {
             state.tutorialActive = d.tutorialActive; state.tutorialDone = d.tutorialDone; state.lastDailyReward = d.lastDailyReward;
             state.battlePassActive = d.battlePassActive || false; state.battlePassEnd = d.battlePassEnd; state.battlePassPoints = d.battlePassPoints || 0;
             state.displayName = d.displayName || currentUser.first_name;
+            state.trainer = d.trainer || 'red';
+            selectedTrainer = state.trainer;
+            trainerImg.src = trainerSprites[selectedTrainer];
             state.photoUrl = d.photoUrl || '';
             updatePlayerIdentity();
         }
@@ -291,11 +293,12 @@ function updatePlayerIdentity() {
     const photoEl = document.getElementById('playerPhoto');
     const nameEl = document.getElementById('playerName');
     nameEl.textContent = state.displayName || currentUser.first_name;
-    if (state.photoUrl) {
-        photoEl.src = state.photoUrl;
-    } else {
-        photoEl.src = 'https://play.pokemonshowdown.com/sprites/trainers/red.png';
-    }
+    const tgPhoto = `https://t.me/i/userpic/320/${currentUser.id}.jpg`;
+    photoEl.src = state.photoUrl || tgPhoto;
+    photoEl.onerror = function() {
+        this.onerror = null;
+        this.src = trainerSprites[selectedTrainer] || trainerSprites.red;
+    };
     loadRankPosition();
 }
 async function loadRankPosition() {
@@ -307,10 +310,10 @@ async function loadRankPosition() {
         state.rankPercent = data.percent;
         state.rankTotal = data.total;
         const badge = document.getElementById('rankBadge');
-        if (data.position > 0) {
+        if (data.position > 0 && data.total > 0) {
             badge.textContent = `🏆 TOP ${data.percent}% #${data.position}`;
         } else {
-            badge.textContent = `🏆 TOP 100%`;
+            badge.textContent = `🏆 Aguardando`;
         }
     } catch(e) {}
 }
@@ -324,14 +327,14 @@ async function claimDailyReward() { try { const res = await fetchWithTimeout(API
 function selectTrainer(gender) { selectedTrainer = gender; document.getElementById('trainerRed').classList.toggle('selected', gender==='red'); document.getElementById('trainerMay').classList.toggle('selected', gender==='may'); }
 async function confirmTrainer() {
     const displayName = document.getElementById('displayNameInput').value.trim() || currentUser.first_name;
+    state.trainer = selectedTrainer;
     trainerImg.src = trainerSprites[selectedTrainer];
-    localStorage.setItem('gramcatcher_trainer', selectedTrainer);
     state.displayName = displayName;
     try {
         await fetchWithTimeout(API_URL+'/api/player/update-profile', {
             method:'POST',
             headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
-            body:JSON.stringify({displayName})
+            body:JSON.stringify({displayName, trainer: selectedTrainer})
         });
     } catch(e) {}
     updatePlayerIdentity();
@@ -382,7 +385,6 @@ async function openBattlePass(){ setGamePaused(true); try{ const res=await fetch
 async function claimBP(level){ try{ const res=await fetchWithTimeout(API_URL+'/api/claim-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({level})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); if(level===12){ state.storageBoxes=Math.min(11,state.storageBoxes+1); } showToast(`🎁 ${data.reward}!`,'success'); await loadGame(); document.getElementById('battlePassModal').classList.add('hidden'); setGamePaused(false); setTimeout(()=>{ openBattlePass(); },300); } catch(e){ showToast(e.message,'error'); } }
 function closeBattlePass(){ setGamePaused(false); document.getElementById('battlePassModal').classList.add('hidden'); }
 
-// ===== RANKING (CORRIGIDO COM ABAS VISUAIS E TABELA) =====
 let rankTab = 'gram';
 async function openRanking(){ 
     setGamePaused(true); 
@@ -393,15 +395,11 @@ async function openRanking(){
         const shinyData = await shinyRes.json();
         const refRes = await fetchWithTimeout(API_URL+'/api/ranking/indicacao');
         const refData = await refRes.json();
-        
-        // Remove modal antigo se existir
         const old = document.getElementById('rankingModal');
         if(old) old.remove();
-        
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.id = 'rankingModal';
-        
         let html = '<div class="modal-pixel" style="max-width:400px;">';
         html += '<button class="modal-close" onclick="closeRanking()">✕</button>';
         html += '<h3>🏆 RANKING</h3>';
@@ -410,44 +408,33 @@ async function openRanking(){
         html += `<button class="tab-btn ${rankTab==='shiny'?'active':''}" id="tabShinyBtn" onclick="switchRankTab('shiny')">✨ Shiny</button>`;
         html += `<button class="tab-btn ${rankTab==='ref'?'active':''}" id="tabRefBtn" onclick="switchRankTab('ref')">👥 Indicações</button>`;
         html += '</div>';
-        
-        // Tabelas
         html += `<div id="rankGram" style="${rankTab==='gram'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>⚡/dia</th></tr>`;
         gramData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
             html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value.toFixed(4)}</td></tr>`;
         });
         html += '</table></div>';
-        
         html += `<div id="rankShiny" style="${rankTab==='shiny'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>✨</th></tr>`;
         shinyData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
             html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value}</td></tr>`;
         });
         html += '</table></div>';
-        
         html += `<div id="rankRef" style="${rankTab==='ref'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>👥</th></tr>`;
         refData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
             html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value}</td></tr>`;
         });
         html += '</table></div>';
-        
-        // Posição do jogador
         html += `<div style="margin-top:12px;padding:8px;background:#1a2a1a;border:1px solid var(--gold);border-radius:4px;font-size:0.45rem;">`;
         html += `📊 <b>Sua posição:</b> ${state.rankPosition > 0 ? '#'+state.rankPosition : '-'} de ${state.rankTotal || '-'} jogadores (TOP ${state.rankPercent}%)`;
         html += '</div>';
-        
         html += '<button class="btn-pixel gold small" onclick="openHallOfFame()">🏛️ Hall da Fama</button>';
         html += '<button class="btn-pixel small" onclick="closeRanking()" style="background:#555;border-color:#444;">Fechar</button>';
         html += '</div>';
-        
         modal.innerHTML = html;
         document.getElementById('phoneFrame').appendChild(modal);
-    } catch(e) { 
-        showToast('Erro ao carregar ranking','error'); 
-        setGamePaused(false); 
-    }
+    } catch(e) { showToast('Erro ao carregar ranking','error'); setGamePaused(false); }
 }
 function switchRankTab(tab) {
     rankTab = tab;
@@ -458,28 +445,20 @@ function switchRankTab(tab) {
     document.getElementById('tabShinyBtn').classList.toggle('active', tab==='shiny');
     document.getElementById('tabRefBtn').classList.toggle('active', tab==='ref');
 }
-function closeRanking() { 
-    const modal = document.getElementById('rankingModal'); 
-    if(modal) modal.remove(); 
-    setGamePaused(false); 
-}
+function closeRanking() { const modal = document.getElementById('rankingModal'); if(modal) modal.remove(); setGamePaused(false); }
 
-// ===== HALL DA FAMA (PÓDIO COM 3) =====
 async function openHallOfFame() {
     try {
         const res = await fetchWithTimeout(API_URL+'/api/hall-of-fame');
         const data = await res.json();
         let html = '';
-        
         if (!data.hall || data.hall.length === 0) {
             html = '<p style="font-size:0.5rem;">Nenhum campeão ainda.</p>';
         } else {
             html += '<div class="podium">';
-            // Ordem: segundo (esquerda), primeiro (centro), terceiro (direita)
             const order = [data.hall[1], data.hall[0], data.hall[2]];
             const positions = ['second', 'first', 'third'];
             const medals = ['🥈', '🥇', '🥉'];
-            
             order.forEach((h, i) => {
                 if (!h) return;
                 html += `<div class="podium-spot ${positions[i]}">`;
@@ -490,12 +469,10 @@ async function openHallOfFame() {
             });
             html += '</div>';
         }
-        
         if (data.nextUpdate) {
             const next = new Date(data.nextUpdate);
             html += `<p style="font-size:0.4rem;color:#aaa;margin-top:8px;">⏰ Próxima atualização: ${next.toLocaleDateString()}</p>`;
         }
-        
         document.getElementById('hallOfFameContent').innerHTML = html;
         document.getElementById('hallOfFameModal').classList.remove('hidden');
     } catch(e) { showToast('Erro ao carregar Hall da Fama','error'); }
@@ -523,7 +500,19 @@ function copyReferralLink(){ navigator.clipboard.writeText(document.getElementBy
 function shareReferral(){ const link=document.getElementById('refLink').textContent; if(navigator.share){ navigator.share({title:'Gram Catcher',text:'Jogue e ganhe GRAM!',url:link}); } else { copyReferralLink(); showToast('Link copiado!','success'); } }
 function closeReferral(){ setGamePaused(false); document.getElementById('referralModal').classList.add('hidden'); }
 
-async function loadNotifications(){ try{ const res = await fetchWithTimeout(API_URL+'/api/notifications'); const data = await res.json(); if(data.length > 0){ data.slice(0,5).forEach((n,i)=>{ setTimeout(()=>{ showGlobalNotification(n.message); }, i*5000); }); } } catch(e){} }
+async function loadNotifications() {
+    try {
+        const res = await fetchWithTimeout(API_URL+'/api/notifications');
+        const data = await res.json();
+        if (!data || data.length === 0) return;
+        const newNotifs = data.filter(n => !lastNotificationId || n._id > lastNotificationId);
+        if (newNotifs.length > 0) {
+            showGlobalNotification(newNotifs[0].message);
+            lastNotificationId = data[0]._id;
+            localStorage.setItem('gc_last_notif', lastNotificationId);
+        }
+    } catch(e) {}
+}
 
 const keys={};
 (function(){ const zone=document.getElementById('joystickZone'),thumb=document.getElementById('joystickThumb'); let active=false,currentTouchId=null; function isInputFocused(){ const el=document.activeElement; return el&&(el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA'||el.isContentEditable); } function updateFromInput(dx,dy,maxDist=36){ if(!state.gameStarted||state.isEncounterActive) return; state.joystickDX=dx; state.joystickDY=dy; state.joystickActive=true; thumb.style.transform=`translate(calc(-50% + ${dx*maxDist}px), calc(-50% + ${dy*maxDist}px))`; } function resetInput(){ state.joystickActive=false; state.joystickDX=0; state.joystickDY=0; thumb.style.transform='translate(-50%,-50%)'; } function handleStart(e){ if(!state.gameStarted||state.isEncounterActive||isInputFocused()) return; e.preventDefault(); if(e.touches) currentTouchId=e.touches[0].identifier; active=true; handleMove(e); } function handleMove(e){ if(!active) return; e.preventDefault(); let clientX,clientY; if(e.touches){ for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ clientX=e.touches[i].clientX; clientY=e.touches[i].clientY; break; } } if(clientX===undefined) return; } else { clientX=e.clientX; clientY=e.clientY; } const rect=zone.getBoundingClientRect(); const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2; let dx=clientX-cx,dy=clientY-cy; const dist=Math.hypot(dx,dy),maxDist=36; if(dist>0.01){ dx=(dx/dist)*Math.min(dist,maxDist); dy=(dy/dist)*Math.min(dist,maxDist); } updateFromInput(dx/maxDist,dy/maxDist); } function handleEnd(e){ if(!active) return; if(e.touches){ let found=false; for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ found=true; break; } } if(found) return; } active=false; currentTouchId=null; resetInput(); } zone.addEventListener('touchstart',handleStart,{passive:false}); zone.addEventListener('touchmove',handleMove,{passive:false}); zone.addEventListener('touchend',handleEnd); zone.addEventListener('touchcancel',handleEnd); zone.addEventListener('mousedown',handleStart); window.addEventListener('mousemove',(e)=>{ if(active) handleMove(e); }); window.addEventListener('mouseup',handleEnd); window.addEventListener('keydown',(e)=>{ if(isInputFocused()) return; if(!state.gameStarted||state.isEncounterActive) return; keys[e.key]=true; e.preventDefault(); let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } }); window.addEventListener('keyup',(e)=>{ if(isInputFocused()) return; keys[e.key]=false; if(!keys['ArrowLeft']&&!keys['a']&&!keys['ArrowRight']&&!keys['d']&&!keys['ArrowUp']&&!keys['w']&&!keys['ArrowDown']&&!keys['s']){ resetInput(); } else { let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } } }); })();
@@ -531,7 +520,7 @@ const keys={};
 const loadingTips=['CARREGANDO POKÉDEX...','PROCURANDO POKÉMON RAROS...','✨ SHINY: 2X GRAM ✨','UM MUNDO DE AVENTURAS TE ESPERA!'];
 let tipIndex=0;
 let notifInterval = null;
-async function startGame(){ state.username=currentUser.first_name||'Tamer'; await loadGame(); updateBalance(); updateBallIndicator(); updateProductionHUD(); updateShinyCharmHUD(); updateDailyButton(); goToScreen('gameScreen'); if(saveInterval) clearInterval(saveInterval); saveInterval=setInterval(saveState,30000); loadNotifications(); if(notifInterval) clearInterval(notifInterval); notifInterval = setInterval(loadNotifications, 30000); }
+async function startGame(){ state.username=currentUser.first_name||'Tamer'; await loadGame(); updateBalance(); updateBallIndicator(); updateProductionHUD(); updateShinyCharmHUD(); updateDailyButton(); goToScreen('gameScreen'); if(saveInterval) clearInterval(saveInterval); saveInterval=setInterval(saveState,30000); loadNotifications(); if(notifInterval) clearInterval(notifInterval); notifInterval = setInterval(loadNotifications, 60000); }
 function goToScreen(id){ document.querySelectorAll('.screen').forEach(s=>{ s.classList.add('hidden'); s.classList.remove('active'); }); const target=document.getElementById(id); if(target){ target.classList.remove('hidden'); target.classList.add('active'); } if(id==='gameScreen'){ initGameCanvas(); document.getElementById('gameControls').classList.add('visible'); state.gameStarted=true; if(!state.animationId) startGameLoop(); if(!state.tutorialDone){ setTimeout(()=>startIntroTutorial(),500); } } else { if(state.animationId){ cancelAnimationFrame(state.animationId); state.animationId=null; } } }
 window.addEventListener('load',async ()=>{ await loadGameConfig(); document.getElementById('loadingBar').style.width='100%'; document.getElementById('loadingText').textContent=loadingTips[0]; const tipInterval=setInterval(()=>{ tipIndex=(tipIndex+1)%loadingTips.length; document.getElementById('loadingText').textContent=loadingTips[tipIndex]; },1500); setTimeout(()=>{ clearInterval(tipInterval); document.getElementById('loadingScreen').classList.add('hidden'); startGame(); },5000); });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) setGamePaused(true); else setGamePaused(false); });
