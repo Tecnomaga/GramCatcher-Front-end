@@ -247,7 +247,7 @@ updateTonPrice(); setInterval(updateTonPrice,60000);
 let state = {
     balance:0, inventory:{pokeball:0,greatball:0,ultraball:0,masterball:0,friendball:0},
     playerX:200,playerY:280, stepsSinceEncounter:0, frameCounter:0, collection:[],
-    username:'', displayName:'', photoUrl:'', trainer:'red', gameStarted:false, joystickActive:false, joystickDX:0, joystickDY:0,
+    username:'', displayName:'', photoUrl:'', trainer:'', gameStarted:false, joystickActive:false, joystickDX:0, joystickDY:0,
     currentEncounterId: null, isEncounterActive:false, mapWidth:500, mapHeight:460,
     grassPatches:[], battleImg:null, animationId:null, storageBoxes:1,
     tutorialBalls:0, tutorialActive:false, currentBox:0, lastProductionUpdate:Date.now(),
@@ -281,10 +281,12 @@ async function loadGame() {
             state.tutorialActive = d.tutorialActive; state.tutorialDone = d.tutorialDone; state.lastDailyReward = d.lastDailyReward;
             state.battlePassActive = d.battlePassActive || false; state.battlePassEnd = d.battlePassEnd; state.battlePassPoints = d.battlePassPoints || 0;
             state.displayName = d.displayName || currentUser.first_name;
-            state.trainer = d.trainer || 'red';
-            selectedTrainer = state.trainer;
-            trainerImg.src = trainerSprites[selectedTrainer];
+            state.trainer = d.trainer || '';
             state.photoUrl = d.photoUrl || '';
+            if (state.trainer) {
+                selectedTrainer = state.trainer;
+                trainerImg.src = trainerSprites[state.trainer];
+            }
             updatePlayerIdentity();
         }
     } catch(e) { showToast('Erro ao carregar dados', 'error'); }
@@ -293,12 +295,14 @@ function updatePlayerIdentity() {
     const photoEl = document.getElementById('playerPhoto');
     const nameEl = document.getElementById('playerName');
     nameEl.textContent = state.displayName || currentUser.first_name;
-    const tgPhoto = `https://t.me/i/userpic/320/${currentUser.id}.jpg`;
-    photoEl.src = state.photoUrl || tgPhoto;
-    photoEl.onerror = function() {
-        this.onerror = null;
-        this.src = trainerSprites[selectedTrainer] || trainerSprites.red;
-    };
+    if (state.photoUrl) {
+        const testImg = new Image();
+        testImg.onload = function() { photoEl.src = state.photoUrl; };
+        testImg.onerror = function() { photoEl.src = trainerSprites[state.trainer] || trainerSprites.red; };
+        testImg.src = state.photoUrl;
+    } else {
+        photoEl.src = trainerSprites[state.trainer] || trainerSprites.red;
+    }
     loadRankPosition();
 }
 async function loadRankPosition() {
@@ -411,19 +415,19 @@ async function openRanking(){
         html += `<div id="rankGram" style="${rankTab==='gram'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>⚡/dia</th></tr>`;
         gramData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
-            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value.toFixed(4)}</td></tr>`;
+            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${(p.value||0).toFixed(4)}</td></tr>`;
         });
         html += '</table></div>';
         html += `<div id="rankShiny" style="${rankTab==='shiny'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>✨</th></tr>`;
         shinyData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
-            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value}</td></tr>`;
+            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value||0}</td></tr>`;
         });
         html += '</table></div>';
         html += `<div id="rankRef" style="${rankTab==='ref'?'':'display:none;'}"><table class="rank-table"><tr><th>#</th><th>Jogador</th><th>👥</th></tr>`;
         refData.players.slice(0,10).forEach((p,i)=>{
             const cls = p.telegramId === currentUser.id ? 'highlight-row' : '';
-            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value}</td></tr>`;
+            html += `<tr class="${cls}"><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</td><td style="display:flex;align-items:center;gap:4px;"><img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;" onerror="this.style.display='none'">${p.displayName||p.username}</td><td>${p.value||0}</td></tr>`;
         });
         html += '</table></div>';
         html += `<div style="margin-top:12px;padding:8px;background:#1a2a1a;border:1px solid var(--gold);border-radius:4px;font-size:0.45rem;">`;
