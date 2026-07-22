@@ -133,10 +133,9 @@
         .rank-table th { color:var(--gold); padding:4px; border-bottom:1px solid #4a5a7e; }
         .rank-table td { padding:4px; border-bottom:1px solid #2a3a4e; }
         .rank-table .highlight-row { background:rgba(255,215,0,0.1); }
-        .launch-badge { position:absolute; top:8px; right:8px; background:#ff4500; color:#fff; font-size:0.4rem; padding:4px 8px; border-radius:4px; animation:pulse 1s infinite; z-index:60; cursor:pointer; }
+        .launch-badge { position:absolute; top:8px; right:8px; background:#ff4500; color:#fff; font-size:0.4rem; padding:4px 8px; border-radius:4px; animation:pulse 1s infinite; z-index:30; cursor:pointer; }
         @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
         .pack-card { background:#1a2a3a; border:2px solid #4a5a7e; padding:10px; margin:6px 0; border-radius:8px; text-align:center; }
-        .pack-card.featured { border-color:#ffd700; background:#1a1a0a; }
         .pack-card img { width:64px; height:64px; image-rendering:pixelated; }
         .pack-card .pack-price { font-size:0.6rem; color:#ffd700; margin:6px 0; }
         .pack-card .pack-prod { font-size:0.4rem; color:#5f5; }
@@ -172,6 +171,7 @@
         </div>
         <div class="map-container" id="mapContainer">
             <canvas id="gameCanvas"></canvas>
+            <div class="launch-badge" id="launchBadge" onclick="openLaunchPacks()" style="display:none;">🔥 Oferta Limitada</div>
             <div class="game-controls" id="gameControls">
                 <div class="joystick-zone" id="joystickZone"><div class="joystick-base"></div><div class="joystick-thumb" id="joystickThumb"></div></div>
                 <div class="action-btns">
@@ -182,10 +182,8 @@
                 <div class="daily-btn"><button class="btn-pixel small" id="dailyRewardBtn" onclick="claimDailyReward()">🎁 Resgate Diário</button></div>
             </div>
         </div>
-        <div class="launch-badge" id="launchBadge" onclick="openLaunchPacks()" style="display:none;">🔥 Oferta Limitada</div>
     </div>
 
-    <!-- Modals existentes... -->
     <div class="modal-overlay hidden" id="tutorialIntroModal"><div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div></div>
     <div class="modal-overlay hidden" id="tutorialModal"><div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Escolher Treinador</button></div></div>
     <div class="modal-overlay hidden" id="trainerModal"><div class="modal-pixel golden"><h3>🧢 Escolha seu Treinador</h3><p style="font-size:0.5rem;">Quem vai explorar o mundo?</p><div class="trainer-select"><div class="trainer-option selected" id="trainerRed" onclick="selectTrainer('red')"><img src="https://play.pokemonshowdown.com/sprites/trainers/red.png" alt="Red"><span>Red</span></div><div class="trainer-option" id="trainerMay" onclick="selectTrainer('may')"><img src="https://play.pokemonshowdown.com/sprites/trainers/may.png" alt="May"><span>May</span></div></div><div class="label-text" style="margin-top:10px;">📛 Seu nome no Ranking:</div><input class="input-pixel" type="text" id="displayNameInput" placeholder="Seu nome público" maxlength="20"><button class="btn-pixel gold" onclick="confirmTrainer()">Começar Aventura!</button></div></div>
@@ -263,14 +261,12 @@ async function openLaunchPacks() {
     setGamePaused(true);
     const countdown = getTimeRemaining();
     document.getElementById('packsCountdown').textContent = `⏰ Restam ${countdown}`;
-    
     let html = '';
     const packs = [
         { key: 'inicial', emoji: '🔥' },
         { key: 'cacador', emoji: '⚡' },
         { key: 'lendario', emoji: '👑' }
     ];
-    
     packs.forEach(p => {
         const pack = launchPacks[p.key];
         if (!pack) return;
@@ -278,7 +274,6 @@ async function openLaunchPacks() {
         const roi = roiData[pack.pokemon.rarity];
         const shinyProd = roi.total * 2;
         const days = roi.days;
-        
         html += `<div class="pack-card">`;
         html += `<p style="font-size:0.5rem;color:var(--gold);">${p.emoji} ${pack.name}</p>`;
         html += `<img src="${SPRITE_BASE}shiny/${pack.pokemon.id}.png" onerror="this.src='${SPRITE_BASE}${pack.pokemon.id}.png'">`;
@@ -293,7 +288,6 @@ async function openLaunchPacks() {
         }
         html += `</div>`;
     });
-    
     document.getElementById('packsContent').innerHTML = html;
     document.getElementById('launchPacksModal').classList.remove('hidden');
 }
@@ -311,9 +305,8 @@ async function buyLaunchPack(packType) {
         if (!res.ok) throw new Error(data.error);
         state.balance = data.newBalance;
         state.inventory = data.newInventory;
-        if (!state.launchPacksPurchased) state.launchPacksPurchased = [];
-        state.launchPacksPurchased.push(packType);
-        state.collection.push(data.pokemon);
+        state.launchPacksPurchased = data.launchPacksPurchased || [];
+        if (data.pokemon) state.collection.push(data.pokemon);
         updateBalance();
         updateBallIndicator();
         showToast(`${pack.name} comprado! 🎉`, 'success');
