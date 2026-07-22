@@ -133,6 +133,13 @@
         .rank-table th { color:var(--gold); padding:4px; border-bottom:1px solid #4a5a7e; }
         .rank-table td { padding:4px; border-bottom:1px solid #2a3a4e; }
         .rank-table .highlight-row { background:rgba(255,215,0,0.1); }
+        .launch-badge { position:absolute; top:8px; right:8px; background:#ff4500; color:#fff; font-size:0.4rem; padding:4px 8px; border-radius:4px; animation:pulse 1s infinite; z-index:60; cursor:pointer; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+        .pack-card { background:#1a2a3a; border:2px solid #4a5a7e; padding:10px; margin:6px 0; border-radius:8px; text-align:center; }
+        .pack-card.featured { border-color:#ffd700; background:#1a1a0a; }
+        .pack-card img { width:64px; height:64px; image-rendering:pixelated; }
+        .pack-card .pack-price { font-size:0.6rem; color:#ffd700; margin:6px 0; }
+        .pack-card .pack-prod { font-size:0.4rem; color:#5f5; }
     </style>
 </head>
 <body>
@@ -175,14 +182,17 @@
                 <div class="daily-btn"><button class="btn-pixel small" id="dailyRewardBtn" onclick="claimDailyReward()">🎁 Resgate Diário</button></div>
             </div>
         </div>
+        <div class="launch-badge" id="launchBadge" onclick="openLaunchPacks()" style="display:none;">🔥 Oferta Limitada</div>
     </div>
 
+    <!-- Modals existentes... -->
     <div class="modal-overlay hidden" id="tutorialIntroModal"><div class="modal-pixel"><h3>🎓 Tutorial</h3><div id="tutorialStepContent"></div><div id="tutorialDots"></div><button class="btn-pixel gold" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo ▶</button><button class="btn-pixel small" id="tutorialSkipBtn" onclick="skipTutorial()" style="background:#555;border-color:#444;">Pular</button></div></div>
     <div class="modal-overlay hidden" id="tutorialModal"><div class="modal-pixel golden"><h3>🎁 Presente Inicial</h3><p>Você recebeu <span style="color:#ffd700;">5 Pokébolas de Iniciante</span>!</p><p style="font-size:0.45rem;color:#aaa;">Use-as para começar sua jornada!</p><button class="btn-pixel gold" onclick="finishTutorial()">Escolher Treinador</button></div></div>
     <div class="modal-overlay hidden" id="trainerModal"><div class="modal-pixel golden"><h3>🧢 Escolha seu Treinador</h3><p style="font-size:0.5rem;">Quem vai explorar o mundo?</p><div class="trainer-select"><div class="trainer-option selected" id="trainerRed" onclick="selectTrainer('red')"><img src="https://play.pokemonshowdown.com/sprites/trainers/red.png" alt="Red"><span>Red</span></div><div class="trainer-option" id="trainerMay" onclick="selectTrainer('may')"><img src="https://play.pokemonshowdown.com/sprites/trainers/may.png" alt="May"><span>May</span></div></div><div class="label-text" style="margin-top:10px;">📛 Seu nome no Ranking:</div><input class="input-pixel" type="text" id="displayNameInput" placeholder="Seu nome público" maxlength="20"><button class="btn-pixel gold" onclick="confirmTrainer()">Começar Aventura!</button></div></div>
     <div class="modal-overlay hidden" id="encounterModal"><div class="modal-pixel" style="padding:0; overflow:hidden;"><button class="modal-close" id="encounterCloseBtn" onclick="fleeEncounter()">✕</button><canvas id="battleCanvas" class="battle-canvas" width="320" height="280"></canvas><div class="battle-text-box"><span id="battleText"></span></div><div class="ball-grid" id="ballGridContainer" style="padding:10px;"></div><button class="btn-pixel" id="encounterFleeBtn" onclick="fleeEncounter()" style="margin:10px; background:#555;border-color:#444;">🏃 Fugir</button></div></div>
     <div class="modal-overlay hidden" id="catchResultModal"><div class="modal-pixel golden"><button class="modal-close" onclick="closeCatchResult()">✕</button><img id="resultImg" src="" style="width:128px;height:128px;image-rendering:pixelated;"><h3>🎉 Capturado!</h3><h2 id="resultName" style="color:#ffd700;font-size:0.7rem;"></h2><p class="rarity-badge" id="resultRarity"></p><p id="resultShiny"></p><p>⚡ Produz <strong id="resultROI" style="color:#ffd700;"></strong> GRAM em <strong id="resultDays"></strong> dias</p><p style="color:#5f5;">🏭 <span id="resultDaily"></span> GRAM/dia</p><div class="modal-buttons"><button class="btn-pixel gold" id="btnCatchOk">OK</button><button class="btn-pixel blue" id="btnVerPC">Ver PC</button></div></div></div>
     <div class="modal-overlay hidden" id="shopModal"><div class="modal-pixel" style="max-width:400px;"><button class="modal-close" onclick="closeShop()">✕</button><h3>🎒 Loja</h3><p class="brl-info" id="tonPriceDisplay">1 GRAM = R$ ...</p><div class="tab-row" style="margin-bottom:12px;"><button class="tab-btn active" id="tabBalls" onclick="switchShopTab('balls')">🔴 Pokébolas</button><button class="tab-btn" id="tabBuffs" onclick="switchShopTab('buffs')">✨ Buffs</button></div><div id="shopItems" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div><button class="btn-pixel small" onclick="closeShop()" style="background:#555;border-color:#444;margin-top:8px;">Fechar</button></div></div>
+    <div class="modal-overlay hidden" id="launchPacksModal"><div class="modal-pixel golden" style="max-width:400px;"><button class="modal-close" onclick="closeLaunchPacks()">✕</button><h3>🔥 OFERTA LIMITADA</h3><p style="font-size:0.5rem;color:#ff4500;" id="packsCountdown"></p><div id="packsContent"></div><button class="btn-pixel small" onclick="closeLaunchPacks()" style="background:#555;border-color:#444;">Fechar</button></div></div>
     <div class="modal-overlay hidden" id="collectionModal"><div class="modal-pixel" style="max-width:400px;"><button class="modal-close" onclick="closeCollection()">✕</button><h3>🖥️ PC Storage</h3><div class="storage-info" id="storageProduction"></div><div class="storage-info" id="storageTotal"></div><div class="tab-row" id="boxTabs"></div><div class="pc-box" id="pcBoxGrid"></div><button class="btn-pixel gold small" onclick="collectAll()">💰 Coletar Tudo</button><button class="btn-pixel blue small" id="btnExpandStorage" onclick="buyStorageExpansion()">⬆️ Expansão</button><button class="btn-pixel small" onclick="closeCollection()" style="background:#555;border-color:#444;">Fechar</button></div></div>
     <div class="modal-overlay hidden" id="battlePassModal"><div class="modal-pixel" style="max-width:400px;"><button class="modal-close" onclick="closeBattlePass()">✕</button><h3>🎫 Passe de Batalha</h3><p style="font-size:0.5rem;">Capture 12 Pokémon para completar!</p><div class="bp-progress"><div class="bp-progress-fill" id="bpProgressFill" style="width:0%"></div></div><p style="font-size:0.45rem;" id="bpPoints">0 / 12 Pontos</p><div id="bpLevels"></div><p style="font-size:0.4rem; color:#aaa;" id="bpEndDate"></p><button class="btn-pixel small" onclick="closeBattlePass()" style="background:#555;border-color:#444;">Fechar</button></div></div>
     <div class="modal-overlay hidden" id="depositModal"><div class="modal-pixel"><button class="modal-close" onclick="closeDeposit()">✕</button><h3>📥 Depósito (GRAM)</h3><p>Envie GRAM para:</p><div class="wallet-line"><span id="walletAddressText">UQCA7IxtVOJ-YQhpOv_y8bVPAG5S7Fb0eFH8Mwre5dt_IHML</span><button onclick="copyWallet()">📋 Copiar</button></div><div class="label-text">Hash da Transação</div><input class="input-pixel" type="text" id="depositTxHash" placeholder="Ex: 0x1234..."><div class="label-text">Valor (GRAM)</div><input class="input-pixel" type="text" id="depositAmount" placeholder="Mínimo 0.2 GRAM"><button class="btn-pixel green" onclick="submitDeposit()">📤 Enviar Comprovante</button><p id="depositStatus" style="color:#ffd700;"></p><button class="btn-pixel small" onclick="closeDeposit()" style="background:#555;border-color:#444;">Fechar</button></div></div>
@@ -203,7 +213,7 @@ const trainerSprites = { red: 'https://play.pokemonshowdown.com/sprites/trainers
 const trainerImg = new Image();
 let selectedTrainer = 'red';
 let lastDirection = 'down';
-let pokemonList = [], ballDefs = {}, roiData = {};
+let pokemonList = [], ballDefs = {}, roiData = {}, launchPacks = {}, packsExpiration = null;
 let lastNotificationId = localStorage.getItem('gc_last_notif') || null;
 const buffDefs = {
     shinyCharm:{ name:'Shiny Charm', item:'shiny-charm.png', cost:1.0, duration:3*60*60*1000, description:'Dobra a chance de encontrar shiny!' },
@@ -222,11 +232,98 @@ async function loadGameConfig() {
         if (!res.ok) throw new Error('Erro');
         const data = await res.json();
         pokemonList = data.pokemonList; ballDefs = data.ballDefs; roiData = data.roiData;
+        launchPacks = data.launchPacks || {};
+        packsExpiration = data.packsExpiration ? new Date(data.packsExpiration) : null;
         if (ballDefs.pokeball && !ballDefs.pokeball.item) ballDefs.pokeball.item = 'poke-ball.png';
         if (ballDefs.greatball && !ballDefs.greatball.item) ballDefs.greatball.item = 'great-ball.png';
         if (ballDefs.ultraball && !ballDefs.ultraball.item) ballDefs.ultraball.item = 'ultra-ball.png';
         if (ballDefs.masterball && !ballDefs.masterball.item) ballDefs.masterball.item = 'master-ball.png';
+        updateLaunchBadge();
     } catch (e) { showToast('Falha ao carregar dados', 'error'); }
+}
+function updateLaunchBadge() {
+    const badge = document.getElementById('launchBadge');
+    if (packsExpiration && new Date() < packsExpiration) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+function getTimeRemaining() {
+    if (!packsExpiration) return 'Expirado';
+    const now = new Date();
+    const diff = packsExpiration - now;
+    if (diff <= 0) return 'Expirado';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${days}d ${hours}h ${minutes}m`;
+}
+async function openLaunchPacks() {
+    setGamePaused(true);
+    const countdown = getTimeRemaining();
+    document.getElementById('packsCountdown').textContent = `⏰ Restam ${countdown}`;
+    
+    let html = '';
+    const packs = [
+        { key: 'inicial', emoji: '🔥' },
+        { key: 'cacador', emoji: '⚡' },
+        { key: 'lendario', emoji: '👑' }
+    ];
+    
+    packs.forEach(p => {
+        const pack = launchPacks[p.key];
+        if (!pack) return;
+        const alreadyBought = state.launchPacksPurchased && state.launchPacksPurchased.includes(p.key);
+        const roi = roiData[pack.pokemon.rarity];
+        const shinyProd = roi.total * 2;
+        const days = roi.days;
+        
+        html += `<div class="pack-card">`;
+        html += `<p style="font-size:0.5rem;color:var(--gold);">${p.emoji} ${pack.name}</p>`;
+        html += `<img src="${SPRITE_BASE}shiny/${pack.pokemon.id}.png" onerror="this.src='${SPRITE_BASE}${pack.pokemon.id}.png'">`;
+        html += `<p style="font-size:0.45rem;">${pack.pokemon.name} ✨</p>`;
+        html += `<p class="pack-prod">⚡ ${shinyProd.toFixed(1)} GRAM em ${days} dias</p>`;
+        html += `<p style="font-size:0.4rem;">+${pack.balls.count} ${pack.balls.type}</p>`;
+        html += `<p class="pack-price">💰 ${pack.price} GRAM</p>`;
+        if (alreadyBought) {
+            html += `<button class="btn-pixel small" disabled>✅ Comprado</button>`;
+        } else {
+            html += `<button class="btn-pixel gold small" onclick="buyLaunchPack('${p.key}')">Comprar</button>`;
+        }
+        html += `</div>`;
+    });
+    
+    document.getElementById('packsContent').innerHTML = html;
+    document.getElementById('launchPacksModal').classList.remove('hidden');
+}
+async function buyLaunchPack(packType) {
+    const pack = launchPacks[packType];
+    if (!pack) return;
+    if (!confirm(`Comprar ${pack.name} por ${pack.price} GRAM?`)) return;
+    try {
+        const res = await fetchWithTimeout(API_URL+'/api/buy-launch-pack', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({packType})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        state.balance = data.newBalance;
+        state.inventory = data.newInventory;
+        if (!state.launchPacksPurchased) state.launchPacksPurchased = [];
+        state.launchPacksPurchased.push(packType);
+        state.collection.push(data.pokemon);
+        updateBalance();
+        updateBallIndicator();
+        showToast(`${pack.name} comprado! 🎉`, 'success');
+        closeLaunchPacks();
+        await loadGame();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+function closeLaunchPacks() {
+    setGamePaused(false);
+    document.getElementById('launchPacksModal').classList.add('hidden');
 }
 class SoundFX {
     constructor() { this.ctx = null; this._init(); }
@@ -253,7 +350,8 @@ let state = {
     tutorialBalls:0, tutorialActive:false, currentBox:0, lastProductionUpdate:Date.now(),
     tutorialDone:false, isCaptureAnimating:false, shinyCharmEnd: 0, shopTab: 'balls',
     lastDailyReward: null, battlePassActive: false, battlePassEnd: null, battlePassPoints: 0,
-    gamePaused: false, rankPercent: 100, rankPosition: 0, rankTotal: 0
+    gamePaused: false, rankPercent: 100, rankPosition: 0, rankTotal: 0,
+    launchPacksPurchased: []
 };
 function setGamePaused(paused) { state.gamePaused = paused; }
 const SPRITE_BASE='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -283,6 +381,7 @@ async function loadGame() {
             state.displayName = d.displayName || currentUser.first_name;
             state.trainer = d.trainer || '';
             state.photoUrl = d.photoUrl || '';
+            state.launchPacksPurchased = d.launchPacksPurchased || [];
             if (state.trainer) {
                 selectedTrainer = state.trainer;
                 trainerImg.src = trainerSprites[state.trainer];
