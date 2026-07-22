@@ -151,7 +151,7 @@
     <div class="screen hidden" id="gameScreen">
         <div class="top-bar">
             <div class="player-identity" onclick="openRanking()">
-                <img id="playerPhoto" src="" onerror="this.onerror=null;this.src='https://play.pokemonshowdown.com/sprites/trainers/red.png';">
+                <img id="playerPhoto" src="https://play.pokemonshowdown.com/sprites/trainers/red.png">
                 <span id="playerName"></span>
             </div>
             <div class="rank-badge" id="rankBadge" onclick="openRanking()"></div>
@@ -295,14 +295,8 @@ function updatePlayerIdentity() {
     const photoEl = document.getElementById('playerPhoto');
     const nameEl = document.getElementById('playerName');
     nameEl.textContent = state.displayName || currentUser.first_name;
-    if (state.photoUrl) {
-        const testImg = new Image();
-        testImg.onload = function() { photoEl.src = state.photoUrl; };
-        testImg.onerror = function() { photoEl.src = trainerSprites[state.trainer] || trainerSprites.red; };
-        testImg.src = state.photoUrl;
-    } else {
-        photoEl.src = trainerSprites[state.trainer] || trainerSprites.red;
-    }
+    const trainerSprite = trainerSprites[state.trainer] || trainerSprites.red;
+    photoEl.src = trainerSprite;
     loadRankPosition();
 }
 async function loadRankPosition() {
