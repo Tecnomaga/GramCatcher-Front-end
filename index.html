@@ -502,7 +502,7 @@ async function openHallOfFame() {
         const res = await fetchWithTimeout(API_URL+'/api/hall-of-fame'); const data = await res.json(); let html = '';
         if (!data.hall || data.hall.length === 0) { html = '<p style="font-size:0.5rem;">Nenhum campeão ainda.</p>'; }
         else { html += '<div class="podium">'; const order = [data.hall[1], data.hall[0], data.hall[2]]; const positions = ['second', 'first', 'third']; const medals = ['🥈', '🥇', '🥉'];
-            order.forEach((h, i) => { if (!h) return; html += `<div class="podium-spot ${positions[i]}"><img src="${h.player.photoUrl}" onerror="this.src='https://play.pokemonshowdown.com/sprites/trainers/red.png'"><div class="name">${h.player.displayName || h.player.username}</div><div class="label">${medals[i]} ${h.label}</div></div>`; });
+            order.forEach((h, i) => { if (!h) return; const sprite = h.player.trainer === 'may' ? 'https://play.pokemonshowdown.com/sprites/trainers/may.png' : 'https://play.pokemonshowdown.com/sprites/trainers/red.png'; html += `<div class="podium-spot ${positions[i]}"><img src="${sprite}"><div class="name">${h.player.displayName || h.player.username}</div><div class="label">${medals[i]} ${h.label}</div></div>`; });
             html += '</div>'; }
         if (data.nextUpdate) { const next = new Date(data.nextUpdate); html += `<p style="font-size:0.4rem;color:#aaa;margin-top:8px;">⏰ Próxima atualização: ${next.toLocaleDateString()}</p>`; }
         document.getElementById('hallOfFameContent').innerHTML = html; document.getElementById('hallOfFameModal').classList.remove('hidden');
