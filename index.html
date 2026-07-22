@@ -139,6 +139,10 @@
         .pack-card img { width:64px; height:64px; image-rendering:pixelated; }
         .pack-card .pack-price { font-size:0.6rem; color:#ffd700; margin:6px 0; }
         .pack-card .pack-prod { font-size:0.4rem; color:#5f5; }
+        .shiny-sparkle { position:absolute; pointer-events:none; z-index:60; animation:sparkle 0.8s ease-out forwards; font-size:1rem; }
+        @keyframes sparkle { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--sx), var(--sy)) scale(0)} }
+        .screen-flash { position:fixed; inset:0; background:radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%); z-index:55; pointer-events:none; animation:flash 0.6s ease-out forwards; }
+        @keyframes flash { 0%{opacity:1} 100%{opacity:0} }
     </style>
 </head>
 <body>
@@ -199,7 +203,6 @@
     <div class="modal-overlay hidden" id="referralModal"><div class="modal-pixel" style="max-width:420px;"><button class="modal-close" onclick="closeReferral()">✕</button><h3>👥 Indique e Ganhe</h3><p style="font-size:0.55rem; line-height:1.8; margin:12px 0;">Convide amigos e ganhe <span style="color:#ffd700;">5% de comissão</span> sobre as recargas deles!</p><div class="wallet-line" style="margin:10px 0;"><span id="refLink" style="font-size:0.6rem;"></span><button onclick="copyReferralLink()">📋 Copiar</button></div><button class="btn-pixel gold small" onclick="shareReferral()">📤 Compartilhar</button><div style="margin-top:18px;"><h4 style="font-size:0.6rem;">Seus Indicados (<span id="refCount">0</span>)</h4><div class="referral-list" id="referralList"></div><p style="font-size:0.55rem; margin-top:10px;">Total de comissões: <strong id="totalCommission" style="color:#ffd700;">0.000000 GRAM</strong></p></div><button class="btn-pixel small" onclick="closeReferral()" style="background:#555;border-color:#444;">Fechar</button></div></div>
     <div class="modal-overlay hidden" id="hallOfFameModal"><div class="modal-pixel golden" style="max-width:400px;"><button class="modal-close" onclick="closeHallOfFame()">✕</button><h3>🏆 HALL DA FAMA</h3><div id="hallOfFameContent"></div><p style="font-size:0.4rem;color:#aaa;" id="hallNextUpdate"></p><button class="btn-pixel small" onclick="closeHallOfFame()" style="background:#555;border-color:#444;">Fechar</button></div></div>
 </div>
-
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 const API_URL = 'https://gramcatcher-back-end.onrender.com';
@@ -242,39 +245,63 @@ async function loadGameConfig() {
 }
 function updateLaunchBadge() {
     const badge = document.getElementById('launchBadge');
-    if (packsExpiration && new Date() < packsExpiration) {
-        badge.style.display = 'block';
-    } else {
-        badge.style.display = 'none';
-    }
+    if (packsExpiration && new Date() < packsExpiration) { badge.style.display = 'block'; }
+    else { badge.style.display = 'none'; }
 }
 function getTimeRemaining() {
     if (!packsExpiration) return 'Expirado';
-    const now = new Date();
-    const diff = packsExpiration - now;
+    const now = new Date(); const diff = packsExpiration - now;
     if (diff <= 0) return 'Expirado';
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${days}d ${hours}h ${minutes}m`;
 }
+function playShinySound() {
+    try {
+        if (!SOUND.ctx) return;
+        const notes = [660, 880, 1100];
+        notes.forEach((freq, i) => {
+            const osc = SOUND.ctx.createOscillator();
+            const gain = SOUND.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, SOUND.ctx.currentTime + i * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, SOUND.ctx.currentTime + i * 0.12 + 0.15);
+            osc.connect(gain); gain.connect(SOUND.ctx.destination);
+            osc.start(SOUND.ctx.currentTime + i * 0.12);
+            osc.stop(SOUND.ctx.currentTime + i * 0.12 + 0.15);
+        });
+    } catch(e) {}
+}
+function showShinyEffect() {
+    const flash = document.createElement('div');
+    flash.className = 'screen-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 600);
+    for (let i = 0; i < 12; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'shiny-sparkle';
+        sparkle.textContent = '✨';
+        sparkle.style.left = (30 + Math.random() * 40) + '%';
+        sparkle.style.top = (20 + Math.random() * 50) + '%';
+        sparkle.style.setProperty('--sx', (Math.random() - 0.5) * 100 + 'px');
+        sparkle.style.setProperty('--sy', (Math.random() - 0.5) * 100 + 'px');
+        document.body.appendChild(sparkle);
+        setTimeout(() => sparkle.remove(), 800);
+    }
+}
 async function openLaunchPacks() {
     setGamePaused(true);
     const countdown = getTimeRemaining();
     document.getElementById('packsCountdown').textContent = `⏰ Restam ${countdown}`;
     let html = '';
-    const packs = [
-        { key: 'inicial', emoji: '🔥' },
-        { key: 'cacador', emoji: '⚡' },
-        { key: 'lendario', emoji: '👑' }
-    ];
+    const packs = [{ key: 'inicial', emoji: '🔥' },{ key: 'cacador', emoji: '⚡' },{ key: 'lendario', emoji: '👑' }];
     packs.forEach(p => {
         const pack = launchPacks[p.key];
         if (!pack) return;
         const alreadyBought = state.launchPacksPurchased && state.launchPacksPurchased.includes(p.key);
-        const roi = roiData[pack.pokemon.rarity];
-        const shinyProd = roi.total * 2;
-        const days = roi.days;
+        const roi = roiData[pack.pokemon.rarity]; const shinyProd = roi.total * 2; const days = roi.days;
         html += `<div class="pack-card">`;
         html += `<p style="font-size:0.5rem;color:var(--gold);">${p.emoji} ${pack.name}</p>`;
         html += `<img src="${SPRITE_BASE}shiny/${pack.pokemon.id}.png" onerror="this.src='${SPRITE_BASE}${pack.pokemon.id}.png'">`;
@@ -282,11 +309,8 @@ async function openLaunchPacks() {
         html += `<p class="pack-prod">⚡ ${shinyProd.toFixed(1)} GRAM em ${days} dias</p>`;
         html += `<p style="font-size:0.4rem;">+${pack.balls.count} ${pack.balls.type}</p>`;
         html += `<p class="pack-price">💰 ${pack.price} GRAM</p>`;
-        if (alreadyBought) {
-            html += `<button class="btn-pixel small" disabled style="background:#555;border-color:#444;">✅ Adquirido</button>`;
-        } else {
-            html += `<button class="btn-pixel gold small" onclick="buyLaunchPack('${p.key}')">Comprar</button>`;
-        }
+        if (alreadyBought) { html += `<button class="btn-pixel small" disabled style="background:#555;border-color:#444;">✅ Adquirido</button>`; }
+        else { html += `<button class="btn-pixel gold small" onclick="buyLaunchPack('${p.key}')">Comprar</button>`; }
         html += `</div>`;
     });
     document.getElementById('packsContent').innerHTML = html;
@@ -297,28 +321,18 @@ async function buyLaunchPack(packType) {
     if (!pack) return;
     if (!confirm(`Comprar ${pack.name} por ${pack.price} GRAM?`)) return;
     try {
-        const res = await fetchWithTimeout(API_URL+'/api/buy-launch-pack', {
-            method:'POST',
-            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
-            body:JSON.stringify({packType})
-        });
+        const res = await fetchWithTimeout(API_URL+'/api/buy-launch-pack', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({packType}) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.balance = data.newBalance;
-        state.inventory = data.newInventory;
+        state.balance = data.newBalance; state.inventory = data.newInventory;
         state.launchPacksPurchased = data.launchPacksPurchased || [];
         if (data.pokemon) state.collection.push(data.pokemon);
-        updateBalance();
-        updateBallIndicator();
+        updateBalance(); updateBallIndicator();
         showToast(`${pack.name} comprado! 🎉`, 'success');
-        closeLaunchPacks();
-        setTimeout(() => openLaunchPacks(), 300);
+        closeLaunchPacks(); setTimeout(() => openLaunchPacks(), 300);
     } catch(e) { showToast(e.message, 'error'); }
 }
-function closeLaunchPacks() {
-    setGamePaused(false);
-    document.getElementById('launchPacksModal').classList.add('hidden');
-}
+function closeLaunchPacks() { setGamePaused(false); document.getElementById('launchPacksModal').classList.add('hidden'); }
 class SoundFX {
     constructor() { this.ctx = null; this._init(); }
     _init() { const i = () => { if(!this.ctx) try{this.ctx=new AudioContext()}catch(e){} if(this.ctx?.state==='suspended') this.ctx.resume(); }; ['touchstart','click'].forEach(e=>document.addEventListener(e,i,{once:true})); }
@@ -344,8 +358,7 @@ let state = {
     tutorialBalls:0, tutorialActive:false, currentBox:0, lastProductionUpdate:Date.now(),
     tutorialDone:false, isCaptureAnimating:false, shinyCharmEnd: 0, shopTab: 'balls',
     lastDailyReward: null, battlePassActive: false, battlePassEnd: null, battlePassPoints: 0,
-    gamePaused: false, rankPercent: 100, rankPosition: 0, rankTotal: 0,
-    launchPacksPurchased: []
+    gamePaused: false, rankPercent: 100, rankPosition: 0, rankTotal: 0, launchPacksPurchased: []
 };
 function setGamePaused(paused) { state.gamePaused = paused; }
 const SPRITE_BASE='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -373,40 +386,16 @@ const startParam = tg.initDataUnsafe?.start_param || urlParams.get('start_param'
             state.collection = d.collection || []; state.storageBoxes = d.storageBoxes; state.tutorialBalls = d.tutorialBalls || 0;
             state.tutorialActive = d.tutorialActive; state.tutorialDone = d.tutorialDone; state.lastDailyReward = d.lastDailyReward;
             state.battlePassActive = d.battlePassActive || false; state.battlePassEnd = d.battlePassEnd; state.battlePassPoints = d.battlePassPoints || 0;
-            state.displayName = d.displayName || currentUser.first_name;
-            state.trainer = d.trainer || '';
-            state.photoUrl = d.photoUrl || '';
+            state.displayName = d.displayName || currentUser.first_name; state.trainer = d.trainer || ''; state.photoUrl = d.photoUrl || '';
             state.shinyCharmEnd = d.shinyCharmEnd ? new Date(d.shinyCharmEnd).getTime() : 0;
-            if (d.launchPacksPurchased && d.launchPacksPurchased.length > 0) {
-                state.launchPacksPurchased = d.launchPacksPurchased;
-            }
-            if (state.trainer) {
-                selectedTrainer = state.trainer;
-                trainerImg.src = trainerSprites[state.trainer];
-            }
+            if (d.launchPacksPurchased && d.launchPacksPurchased.length > 0) { state.launchPacksPurchased = d.launchPacksPurchased; }
+            if (state.trainer) { selectedTrainer = state.trainer; trainerImg.src = trainerSprites[state.trainer]; }
             updatePlayerIdentity();
         }
     } catch(e) { showToast('Erro ao carregar dados', 'error'); }
 }
-function updatePlayerIdentity() {
-    const photoEl = document.getElementById('playerPhoto');
-    const nameEl = document.getElementById('playerName');
-    nameEl.textContent = state.displayName || currentUser.first_name;
-    const trainerSprite = trainerSprites[state.trainer] || trainerSprites.red;
-    photoEl.src = trainerSprite;
-    loadRankPosition();
-}
-async function loadRankPosition() {
-    try {
-        const res = await fetchWithTimeout(API_URL+'/api/ranking/gram_dia/position', { headers:{'Authorization':getAuthHeader()} });
-        if (!res.ok) return;
-        const data = await res.json();
-        state.rankPosition = data.position; state.rankPercent = data.percent; state.rankTotal = data.total;
-        const badge = document.getElementById('rankBadge');
-        if (data.position > 0 && data.total > 0) { badge.textContent = `🏆 TOP ${data.percent}% #${data.position}`; }
-        else { badge.textContent = `🏆 Aguardando`; }
-    } catch(e) {}
-}
+function updatePlayerIdentity() { const photoEl = document.getElementById('playerPhoto'); const nameEl = document.getElementById('playerName'); nameEl.textContent = state.displayName || currentUser.first_name; const trainerSprite = trainerSprites[state.trainer] || trainerSprites.red; photoEl.src = trainerSprite; loadRankPosition(); }
+async function loadRankPosition() { try { const res = await fetchWithTimeout(API_URL+'/api/ranking/gram_dia/position', { headers:{'Authorization':getAuthHeader()} }); if (!res.ok) return; const data = await res.json(); state.rankPosition = data.position; state.rankPercent = data.percent; state.rankTotal = data.total; const badge = document.getElementById('rankBadge'); if (data.position > 0 && data.total > 0) { badge.textContent = `🏆 TOP ${data.percent}% #${data.position}`; } else { badge.textContent = `🏆 Aguardando`; } } catch(e) {} }
 function updateBallIndicator() { const i=state.inventory; document.getElementById('ballIndicator').innerHTML = `<img src="${ITEM_SPRITE}poke-ball.png" style="width:16px;height:16px;">${i.pokeball||0} <img src="${ITEM_SPRITE}great-ball.png" style="width:16px;height:16px;">${i.greatball||0} <img src="${ITEM_SPRITE}ultra-ball.png" style="width:16px;height:16px;">${i.ultraball||0} <img src="${ITEM_SPRITE}master-ball.png" style="width:16px;height:16px;">${i.masterball||0} <img src="${ITEM_SPRITE}friend-ball.png" style="width:16px;height:16px;">${i.friendball||0}`; }
 function updateBalance() { document.getElementById('balanceDisplay').textContent=`🪙 ${state.balance.toFixed(2)}`; }
 function updateProductionHUD() { document.getElementById('productionHud').textContent=`🏭 ${getProductionPerDay().toFixed(4)}/dia`; }
@@ -415,14 +404,7 @@ function copyWallet() { navigator.clipboard.writeText(document.getElementById('w
 function updateDailyButton() { const btn = document.getElementById('dailyRewardBtn'); const now = new Date(); const last = state.lastDailyReward ? new Date(state.lastDailyReward) : null; if (last && (now - last) < 20*60*60*1000) { btn.disabled = true; btn.textContent = '✅ Resgatado Hoje'; } else { btn.disabled = false; btn.textContent = '🎁 Resgate Diário'; } }
 async function claimDailyReward() { try { const res = await fetchWithTimeout(API_URL+'/api/daily-reward', { method:'POST', headers:{'Authorization':getAuthHeader()} }); const data = await res.json(); if (!res.ok) throw new Error(data.error); state.inventory.friendball = (state.inventory.friendball || 0) + 1; state.lastDailyReward = new Date().toISOString(); updateBallIndicator(); updateDailyButton(); showToast('🎁 Friend Ball recebida!', 'success'); } catch(e) { showToast(e.message, 'error'); } }
 function selectTrainer(gender) { selectedTrainer = gender; document.getElementById('trainerRed').classList.toggle('selected', gender==='red'); document.getElementById('trainerMay').classList.toggle('selected', gender==='may'); }
-async function confirmTrainer() {
-    const displayName = document.getElementById('displayNameInput').value.trim() || currentUser.first_name;
-    state.trainer = selectedTrainer; trainerImg.src = trainerSprites[selectedTrainer]; state.displayName = displayName;
-    try { await fetchWithTimeout(API_URL+'/api/player/update-profile', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({displayName, trainer: selectedTrainer}) }); } catch(e) {}
-    updatePlayerIdentity(); document.getElementById('trainerModal').classList.add('hidden');
-    if(state.tutorialBalls>0) showToast(`🎁 ${state.tutorialBalls} Pokébolas de iniciante recebidas!`,'success');
-    updateBallIndicator(); updateDailyButton(); setGamePaused(false);
-}
+async function confirmTrainer() { const displayName = document.getElementById('displayNameInput').value.trim() || currentUser.first_name; state.trainer = selectedTrainer; trainerImg.src = trainerSprites[selectedTrainer]; state.displayName = displayName; try { await fetchWithTimeout(API_URL+'/api/player/update-profile', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({displayName, trainer: selectedTrainer}) }); } catch(e) {} updatePlayerIdentity(); document.getElementById('trainerModal').classList.add('hidden'); if(state.tutorialBalls>0) showToast(`🎁 ${state.tutorialBalls} Pokébolas de iniciante recebidas!`,'success'); updateBallIndicator(); updateDailyButton(); setGamePaused(false); }
 let tutorialStep=0;
 const tutorialSteps=[ { title:'Bem-vindo ao Gram Catcher!', text:'Capture Pokémon e ganhe <b style="color:#5f5;">GRAM</b> automaticamente.<br><br><small style="color:#aaccff;">1 GRAM = 1 TON</small>' }, { title:'🎲 Raridades', text:'<b style="color:#8a8a8a;">Comum</b> → 0.4 GRAM em 60 dias<br><b style="color:#4a90d9;">Raro</b> → 1.0 GRAM em 30 dias<br><b style="color:#9b59b6;">Épico</b> → 2.0 GRAM em 25 dias<br><b style="color:#f1c40f;">Lendário</b> → 4.0 GRAM em 19 dias' }, { title:'✨ Shiny', text:'Alguns Pokémon possuem <b style="color:#ff79c6;">cores diferentes</b> e produzem o <b style="color:#ffd700;">dobro</b> de GRAM!<br><br><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shiny-charm.png" style="width:48px;height:48px;image-rendering:pixelated;"><br><span style="font-size:0.45rem;">Compre o <b style="color:#ff79c6;">Shiny Charm</b> na Loja<br>para dobrar suas chances!<br><br>⏱️ Dura 3 horas<br>🪙 Custa 1 GRAM</span>' }, { title:'🔴 Pokébolas', text:'Compre Pokébolas na <b style="color:#ffd700;">Loja 🛒</b> com seus GRAM minerados.<br><br><small style="color:#aaa;">Diferentes bolas têm diferentes chances!</small>' }, { title:'📦 PC Storage', text:'Os Pokémon capturados produzem GRAM automaticamente.<br><br>Colete os ganhos quando quiser em <b style="color:#ffd700;">PC Storage 🖥️</b>!' } ];
 function startIntroTutorial(){ setGamePaused(true); tutorialStep=0; renderTutorialStep(); document.getElementById('tutorialIntroModal').classList.remove('hidden'); }
@@ -444,7 +426,53 @@ let battleState={phase:'init',timer:0,idleTime:0,shakes:0,success:false,encounte
 function setEncounterButtonsEnabled(enabled){ document.getElementById('encounterCloseBtn').disabled=!enabled; document.getElementById('encounterFleeBtn').disabled=!enabled; state.isCaptureAnimating=!enabled; }
 function drawBattleScene(ctx){ const w=320,h=280; ctx.clearRect(0,0,w,h); const sky=ctx.createLinearGradient(0,0,0,h*0.55); sky.addColorStop(0,'#5b9ecf'); sky.addColorStop(1,'#a3cef1'); ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*0.55); ctx.fillStyle='#c8b878'; ctx.fillRect(0,h*0.55,w,h*0.45); ctx.strokeStyle='#908050'; ctx.beginPath(); ctx.ellipse(w*0.35,h*0.52,80,28,0,0,Math.PI*2); ctx.stroke(); }
 async function triggerEncounter(){ if(state.isEncounterActive||isStorageFull()) return; SOUND.encounter(); state.isEncounterActive=true; state.joystickActive=false; setGamePaused(true); try{ const res=await fetchWithTimeout(API_URL+'/api/encounter',{method:'POST',headers:{'Authorization':getAuthHeader()}}); if(!res.ok) throw new Error('Erro'); const enc=await res.json(); state.currentEncounterId=enc.encounterId; battleState.encounterData=enc; state.battleImg=new Image(); state.battleImg.src=getPokemonSpriteUrl(enc.pokemonId,enc.shiny)+'?t='+Date.now(); battleState={phase:'appear',timer:0,idleTime:0,shakes:0,success:false,encounterData:enc,animId:null}; setEncounterButtonsEnabled(false); document.getElementById('battleText').textContent='Um Pokémon selvagem apareceu!'; document.getElementById('encounterModal').classList.remove('hidden'); drawBattleScene(document.getElementById('battleCanvas').getContext('2d')); if(battleState.animId) cancelAnimationFrame(battleState.animId); animateBattle(); } catch(e){ showToast('Erro de conexão','error'); state.isEncounterActive=false; setGamePaused(false); } }
-function animateBattle(){ if(!state.isEncounterActive) return; const canvas=document.getElementById('battleCanvas'),ctx=canvas.getContext('2d'),w=320,h=280; drawBattleScene(ctx); const enc=battleState.encounterData; if(!enc) return; const img=state.battleImg; if(img&&img.complete&&img.naturalWidth>0){ let px=w*0.35,py=h*0.38,scale=1; if(battleState.phase==='appear'){ battleState.timer+=0.07; if(battleState.timer<1){ px=w*0.35-(1-battleState.timer)*80; scale=0.4+battleState.timer*0.6; } else { battleState.phase='idle'; battleState.idleTime=0; document.getElementById('battleText').innerHTML=`<b>${enc.name}</b> apareceu!`; generateBallGrid(); setEncounterButtonsEnabled(true); } } else if(battleState.phase==='idle'){ battleState.idleTime++; py+=Math.sin(battleState.idleTime*0.08)*2.5; } ctx.save(); ctx.translate(px,py); ctx.scale(scale,scale); if(enc.shiny){ ctx.shadowColor='#ff79c6'; ctx.shadowBlur=30; } else if(enc.rarity==='legendary'){ ctx.shadowColor='#f1c40f'; ctx.shadowBlur=25; } else if(enc.rarity==='epic'){ ctx.shadowColor='#9b59b6'; ctx.shadowBlur=15; } else if(enc.rarity==='rare'){ ctx.shadowColor='#4a90d9'; ctx.shadowBlur=10; } ctx.drawImage(img,-40,-40,80,80); ctx.restore(); const rarityColors={common:'#8a8a8a',rare:'#4a90d9',epic:'#9b59b6',legendary:'#f1c40f'}; ctx.font='bold 10px "Press Start 2P"'; ctx.fillStyle='#000'; ctx.fillText(enc.rarity.toUpperCase(),px-50,py-60); ctx.fillStyle=rarityColors[enc.rarity]; ctx.fillText(enc.rarity.toUpperCase(),px-48,py-58); } battleState.animId=requestAnimationFrame(animateBattle); }
+function animateBattle(){
+    if(!state.isEncounterActive) return;
+    const canvas=document.getElementById('battleCanvas'),ctx=canvas.getContext('2d'),w=320,h=280;
+    drawBattleScene(ctx);
+    const enc=battleState.encounterData;
+    if(!enc) return;
+    const img=state.battleImg;
+    if(img&&img.complete&&img.naturalWidth>0){
+        let px=w*0.35,py=h*0.38,scale=1;
+        if(battleState.phase==='appear'){
+            battleState.timer+=0.07;
+            if(battleState.timer<1){ px=w*0.35-(1-battleState.timer)*80; scale=0.4+battleState.timer*0.6; }
+            else {
+                battleState.phase='idle'; battleState.idleTime=0;
+                if(enc.shiny){
+                    document.getElementById('battleText').innerHTML=`<b style="color:#ff79c6;animation:shinyPulse 0.5s infinite;">✨ ${enc.name} SHINY apareceu! ✨</b>`;
+                    playShinySound();
+                    showShinyEffect();
+                    showGlobalNotification(`✨ Um ${enc.name} SHINY selvagem apareceu!`);
+                } else {
+                    document.getElementById('battleText').innerHTML=`<b>${enc.name}</b> apareceu!`;
+                }
+                generateBallGrid(); setEncounterButtonsEnabled(true);
+            }
+        } else if(battleState.phase==='idle'){
+            battleState.idleTime++;
+            py+=Math.sin(battleState.idleTime*0.08)*2.5;
+        }
+        ctx.save(); ctx.translate(px,py); ctx.scale(scale,scale);
+        if(enc.shiny){ ctx.shadowColor='#ff79c6'; ctx.shadowBlur=30; }
+        else if(enc.rarity==='legendary'){ ctx.shadowColor='#f1c40f'; ctx.shadowBlur=25; }
+        else if(enc.rarity==='epic'){ ctx.shadowColor='#9b59b6'; ctx.shadowBlur=15; }
+        else if(enc.rarity==='rare'){ ctx.shadowColor='#4a90d9'; ctx.shadowBlur=10; }
+        ctx.drawImage(img,-40,-40,80,80); ctx.restore();
+        const rarityColors={common:'#8a8a8a',rare:'#4a90d9',epic:'#9b59b6',legendary:'#f1c40f'};
+        ctx.font='bold 10px "Press Start 2P"'; ctx.fillStyle='#000';
+        ctx.fillText(enc.rarity.toUpperCase(),px-50,py-60);
+        ctx.fillStyle=rarityColors[enc.rarity]; ctx.fillText(enc.rarity.toUpperCase(),px-48,py-58);
+        if(enc.shiny){
+            const alpha = 0.5 + Math.sin(Date.now()/200)*0.5;
+            ctx.fillStyle = `rgba(255,121,198,${alpha})`;
+            ctx.font = 'bold 8px "Press Start 2P"';
+            ctx.fillText('✨SHINY',px-30,py-75);
+        }
+    }
+    battleState.animId=requestAnimationFrame(animateBattle);
+}
 function generateBallGrid(){ const grid=document.getElementById('ballGridContainer'); grid.innerHTML=''; const enc=battleState.encounterData; if(!enc) return; if(state.tutorialBalls>0){ const slot=document.createElement('div'); slot.className='ball-slot'; slot.innerHTML=`<img src="${ITEM_SPRITE}poke-ball.png" style="width:36px;height:36px;"><span>Pokébola Iniciante</span><small>x${state.tutorialBalls}</small><small style="color:#ffd700;">2%</small>`; slot.onclick=()=>{ if(state.isCaptureAnimating) return; if(isStorageFull()){ showToast('Storage cheio!','error'); return; } attemptCatchTutorial(); }; grid.appendChild(slot); } if(state.inventory.friendball>0){ const slot=document.createElement('div'); slot.className='ball-slot'; slot.innerHTML=`<img src="${ITEM_SPRITE}friend-ball.png" style="width:36px;height:36px;"><span>Friend Ball</span><small>x${state.inventory.friendball}</small><small style="color:#ffd700;">2%</small>`; slot.onclick=()=>{ if(state.isCaptureAnimating) return; if(isStorageFull()){ showToast('Storage cheio!','error'); return; } attemptCatch('friendball'); }; grid.appendChild(slot); } Object.entries(ballDefs).forEach(([key,b])=>{ if(key==='friendball') return; const count=state.inventory[key]||0; const slot=document.createElement('div'); slot.className='ball-slot'+(count===0?' disabled':''); slot.innerHTML=`<img src="${ITEM_SPRITE}${b.item || 'poke-ball.png'}" style="width:36px;height:36px;"><span>${b.name}</span><small>x${count}</small><small style="color:#ffd700;">${b.rates[enc.rarity]}%</small>`; if(count>0) slot.onclick=()=>{ if(state.isCaptureAnimating) return; if(isStorageFull()){ showToast('Storage cheio!','error'); return; } attemptCatch(key); }; grid.appendChild(slot); }); }
 async function attemptCatchTutorial(){ if(state.tutorialBalls<=0) return; if(state.isCaptureAnimating) return; state.isCaptureAnimating=true; setEncounterButtonsEnabled(false); document.getElementById('battleText').innerHTML='Lançando Pokébola Iniciante...'; try{ const res=await fetchWithTimeout(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:'tutorial'})}); if(!res.ok) throw new Error('Erro'); const data=await res.json(); if(typeof data.tutorialBalls==='number') state.tutorialBalls=data.tutorialBalls; updateBallIndicator(); saveState(); document.getElementById('battleText').innerHTML='<b>A Pokébola de iniciante falhou...</b>'; setTimeout(()=>{closeEncounter();resetJoystick();setGamePaused(false);},1500); } catch(e){ showToast('Erro de conexão','error'); closeEncounter(); resetJoystick(); setGamePaused(false); } finally { setEncounterButtonsEnabled(true); state.isCaptureAnimating=false; } }
 async function attemptCatch(ballKey){ if((state.inventory[ballKey]||0)<=0) return; if(state.isCaptureAnimating) return; state.isCaptureAnimating=true; setEncounterButtonsEnabled(false); document.getElementById('battleText').innerHTML='Lançando bola...'; try{ const res=await fetchWithTimeout(API_URL+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({encounterId:state.currentEncounterId,ballType:ballKey})}); if(!res.ok){ const errData=await res.json(); throw new Error(errData.error||'Erro'); } const data=await res.json(); if(data.newInventory){ state.inventory = { pokeball:data.newInventory.pokeball||0, greatball:data.newInventory.greatball||0, ultraball:data.newInventory.ultraball||0, masterball:data.newInventory.masterball||0, friendball:data.newInventory.friendball||0 }; } if(typeof data.tutorialBalls==='number') state.tutorialBalls=data.tutorialBalls; if(typeof data.newBalance==='number') state.balance=data.newBalance; updateBalance(); updateBallIndicator(); if(data.success && data.pokemon){ state.collection.push(data.pokemon); SOUND.captureSuccess(); document.getElementById('battleText').innerHTML='<b>Gotcha!</b> 🎉'; setTimeout(()=>{closeEncounter();showCatchResult(data.pokemon,true);resetJoystick();setGamePaused(false);},900); } else { SOUND.captureFail(); const msg=ballKey==='friendball'?'A Friend Ball não funcionou...':'<b>Escapou!</b> 😢'; document.getElementById('battleText').innerHTML=msg; setTimeout(()=>{closeEncounter();resetJoystick();setGamePaused(false);},1400); } } catch(e){ showToast(e.message,'error'); closeEncounter(); resetJoystick(); setGamePaused(false); } finally { setEncounterButtonsEnabled(true); state.isCaptureAnimating=false; } }
@@ -461,11 +489,9 @@ function openShop(){ setGamePaused(true); shopTab='balls'; document.getElementBy
 async function buyBall(k){ const ball=ballDefs[k]; if(!ball) return; if(!confirm(`Comprar ${ball.name} por ${ball.cost.toFixed(2)} GRAM?`)) return; try{ const res=await fetchWithTimeout(API_URL+'/api/buy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({ballType:k})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.inventory=data.newInventory; updateBalance(); updateBallIndicator(); SOUND.transaction(); showToast(`${ball.name} comprada!`,'success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } }
 async function buyBuff(k){ if(k==='shinyCharm'){ if(isShinyCharmActive()){ showToast('Amuleto já está ativo!','error'); return; } if(!confirm('Comprar Shiny Charm por 1 GRAM? Duração: 3 horas.')) return; if(state.balance<1){ showToast('Saldo insuficiente','error'); return; } state.balance-=1; state.shinyCharmEnd=Date.now()+3*60*60*1000; updateBalance(); updateShinyCharmHUD(); SOUND.transaction(); showToast('✨ Shiny Charm ativado!','success'); renderShopItems(); fetchWithTimeout(API_URL+'/api/player/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({shinyCharmEnd:state.shinyCharmEnd})}).catch(()=>{}); } else if(k==='battlePass'){ if(isBattlePassActive()){ showToast('Passe já ativo.','error'); return; } if(!confirm('Comprar Passe de Batalha por 3 GRAM?')) return; try{ const res=await fetchWithTimeout(API_URL+'/api/buy-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.battlePassActive=true; state.battlePassEnd=Date.now()+30*24*60*60*1000; state.battlePassPoints=0; updateBalance(); SOUND.transaction(); showToast('🎫 Passe ativado!','success'); renderShopItems(); } catch(e){ showToast(e.message,'error'); } } }
 function closeShop(){ setGamePaused(false); document.getElementById('shopModal').classList.add('hidden'); }
-
 async function openBattlePass(){ setGamePaused(true); try{ const res=await fetchWithTimeout(API_URL+'/api/battlepass',{headers:{'Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); if(!data.active){ document.getElementById('bpLevels').innerHTML='<p style="font-size:0.5rem;">Passe inativo.</p>'; document.getElementById('bpEndDate').textContent=''; document.getElementById('bpPoints').textContent='0 / 12 Pontos'; document.getElementById('bpProgressFill').style.width='0%'; } else { const pct=Math.min(100,(data.points/12)*100); document.getElementById('bpProgressFill').style.width=pct+'%'; document.getElementById('bpPoints').textContent=`${data.points} / 12 Pontos`; document.getElementById('bpEndDate').textContent=`Válido até ${new Date(data.endDate).toLocaleDateString()}`; let html=''; data.rewards.forEach(r=>{ html+=`<div class="bp-level ${r.claimed?'claimed':''}"><span>${r.level} Capturas</span><button class="bp-btn ${r.claimed?'disabled':''}" onclick="claimBP(${r.level})" ${r.claimed?'disabled':''}>${r.claimed?'✅ Resgatado':'🎁 Resgatar'}</button></div>`; }); document.getElementById('bpLevels').innerHTML=html; } document.getElementById('battlePassModal').classList.remove('hidden'); } catch(e){ showToast(e.message,'error'); setGamePaused(false); document.getElementById('battlePassModal').classList.add('hidden'); } }
 async function claimBP(level){ try{ const res=await fetchWithTimeout(API_URL+'/api/claim-battlepass',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({level})}); const data=await res.json(); if(!res.ok) throw new Error(data.error); if(level===12){ state.storageBoxes=Math.min(11,state.storageBoxes+1); } showToast(`🎁 ${data.reward}!`,'success'); await loadGame(); document.getElementById('battlePassModal').classList.add('hidden'); setGamePaused(false); setTimeout(()=>{ openBattlePass(); },300); } catch(e){ showToast(e.message,'error'); } }
 function closeBattlePass(){ setGamePaused(false); document.getElementById('battlePassModal').classList.add('hidden'); }
-
 let rankTab = 'gram';
 async function openRanking(){ 
     setGamePaused(true); 
@@ -496,7 +522,6 @@ async function openRanking(){
 }
 function switchRankTab(tab) { rankTab = tab; document.getElementById('rankGram').style.display = tab==='gram'?'block':'none'; document.getElementById('rankShiny').style.display = tab==='shiny'?'block':'none'; document.getElementById('rankRef').style.display = tab==='ref'?'block':'none'; document.getElementById('tabGramBtn').classList.toggle('active', tab==='gram'); document.getElementById('tabShinyBtn').classList.toggle('active', tab==='shiny'); document.getElementById('tabRefBtn').classList.toggle('active', tab==='ref'); }
 function closeRanking() { const modal = document.getElementById('rankingModal'); if(modal) modal.remove(); setGamePaused(false); }
-
 async function openHallOfFame() {
     try {
         const res = await fetchWithTimeout(API_URL+'/api/hall-of-fame'); const data = await res.json(); let html = '';
@@ -509,7 +534,6 @@ async function openHallOfFame() {
     } catch(e) { showToast('Erro ao carregar Hall da Fama','error'); }
 }
 function closeHallOfFame() { document.getElementById('hallOfFameModal').classList.add('hidden'); }
-
 function openCollection(){ setGamePaused(true); updateCollectionUI(); document.getElementById('collectionModal').classList.remove('hidden'); }
 function updateCollectionUI(){ const grid=document.getElementById('pcBoxGrid'); grid.innerHTML=''; const start=state.currentBox*12,end=start+12; const boxPokemons=state.collection.slice(start,end); for(let i=0;i<12;i++){ const slot=document.createElement('div'); slot.className='pc-slot'; if(i<boxPokemons.length){ const c=boxPokemons[i]; const elapsedSec=(Date.now()-new Date(c.caughtAt).getTime())/1000; const earned=Math.min(c.roiTotal,c.dailyProduction*elapsedSec/86400); const claimable=Math.max(0,earned-c.claimed); const progress=Math.min(100,(earned/c.roiTotal)*100); const isRetired=progress>=100&&claimable<=0.000001; slot.innerHTML=`<img src="${getPokemonSpriteUrl(c.pokemonId,c.shiny)}" style="width:40px;height:40px;"><span class="pc-name">${c.name}</span><div class="pc-progress"><div class="pc-progress-fill" style="width:${progress}%"></div></div><span class="pc-prod">🏭 ${c.dailyProduction.toFixed(6)} GRAM/dia</span><span class="pc-claim">💰 ${claimable.toFixed(6)}</span>`; if(isRetired){ const sellBtn=document.createElement('button'); sellBtn.className='sell-btn'; sellBtn.textContent='♻️ Vender'; sellBtn.onclick=(e)=>{e.stopPropagation();sellPokemon(c._id);}; slot.appendChild(sellBtn); } else { const idx=start+i; slot.onclick=()=>{claimCreature(idx);}; } } else { slot.innerHTML='<span style="opacity:0.2;">∅</span>'; } grid.appendChild(slot); } document.getElementById('storageProduction').innerHTML=`⚡ Produção total: <span class="highlight-prod">🏭 ${getProductionPerDay().toFixed(6)} GRAM/dia</span>`; document.getElementById('storageTotal').innerHTML=`💰 Disponível para coleta: <span class="highlight">${getAvailableToClaim().toFixed(6)} GRAM</span>`; const tabs=document.getElementById('boxTabs'); tabs.innerHTML=''; for(let i=0;i<state.storageBoxes;i++){ const btn=document.createElement('button'); btn.className='tab-btn'+(i===state.currentBox?' active':''); btn.textContent=`Box ${i+1}`; btn.onclick=()=>{state.currentBox=i;updateCollectionUI();}; tabs.appendChild(btn); } document.getElementById('btnExpandStorage').style.display=state.storageBoxes>=11?'none':'block'; document.getElementById('btnExpandStorage').textContent=`⬆️ Expansão (${state.storageBoxes*10} GRAM)`; }
 async function sellPokemon(id){ if(!confirm('Vender por 0.01 GRAM?')) return; try{ const res=await fetchWithTimeout(`${API_URL}/api/sell-pokemon/${id}`,{method:'POST',headers:{'Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; updateBalance(); showToast('Vendido!','success'); updateCollectionUI(); } catch(e){ showToast(e.message,'error'); } }
@@ -517,7 +541,6 @@ async function claimCreature(idx){ try{ const res=await fetchWithTimeout(`${API_
 async function collectAll(){ try{ const res=await fetchWithTimeout(`${API_URL}/api/collect-all`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; if(data.collected>0){ state.collection.forEach(c=>{ const elapsedSec=(Date.now()-new Date(c.caughtAt).getTime())/1000; const earned=Math.min(c.roiTotal,c.dailyProduction*elapsedSec/86400); c.claimed=earned; }); updateBalance(); showToast(`💰 ${data.collected.toFixed(6)} GRAM!`,'success'); } else showToast('Nada para coletar','error'); updateCollectionUI(); } catch(e){ showToast(e.message,'error'); } }
 async function buyStorageExpansion(){ try{ const res=await fetchWithTimeout(`${API_URL}/api/expand-storage`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}}); const data=await res.json(); if(!res.ok) throw new Error(data.error); state.balance=data.newBalance; state.storageBoxes=data.storageBoxes; updateBalance(); updateCollectionUI(); showToast(`⬆️ Expansão! Boxes: ${state.storageBoxes}`,'success'); } catch(e){ showToast(e.message,'error'); } }
 function closeCollection(){ setGamePaused(false); resetJoystick(); document.getElementById('collectionModal').classList.add('hidden'); }
-
 function openDeposit(){ setGamePaused(true); document.getElementById('depositTxHash').value=''; document.getElementById('depositAmount').value=''; document.getElementById('depositStatus').innerHTML=''; document.getElementById('depositModal').classList.remove('hidden'); }
 async function submitDeposit(){ const tx=document.getElementById('depositTxHash').value.trim(); let rawAmt=document.getElementById('depositAmount').value.replace(',','.'); const amt=parseFloat(rawAmt); if(!tx||isNaN(amt)||amt<0.2){ showToast('Preencha corretamente','error'); return; } try{ const res=await fetchWithTimeout(API_URL+'/api/deposit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,txHash:tx})}); const data=await res.json(); if(res.ok){ showToast('Depósito registrado!','success'); document.getElementById('depositStatus').innerHTML='⏳ Pendente.'; } else showToast(data.error||'Erro','error'); } catch(e){ showToast('Erro de conexão','error'); } }
 function closeDeposit(){ setGamePaused(false); document.getElementById('depositModal').classList.add('hidden'); }
@@ -525,17 +548,13 @@ function openWithdraw(){ setGamePaused(true); document.getElementById('withdrawB
 document.getElementById('withdrawAmount').addEventListener('input',function(){ const v=parseFloat(this.value.replace(',','.'))||0; const fee=getWithdrawFee(v); document.getElementById('withdrawFeePercent').textContent=(fee*100).toFixed(0)+'%'; document.getElementById('receiveAmount').textContent=(v*(1-fee)).toFixed(6); });
 async function withdraw(){ const amt=parseFloat(document.getElementById('withdrawAmount').value.replace(',','.')); const wallet=document.getElementById('walletAddress').value.trim(); if(!wallet){ showToast('Carteira obrigatória','error'); return; } if(isNaN(amt)||amt<5){ showToast('Mínimo 5 GRAM','error'); return; } if(amt>state.balance){ showToast('Saldo insuficiente','error'); return; } try{ const res=await fetchWithTimeout(API_URL+'/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({amount:amt,walletAddress:wallet})}); const data=await res.json(); if(res.ok){ state.balance=data.newBalance; updateBalance(); showToast('Saque solicitado!','success'); document.getElementById('withdrawStatus').innerHTML='⏳ Pendente.'; } else showToast(data.error||'Erro','error'); } catch(e){ showToast('Erro de conexão','error'); } }
 function closeWithdraw(){ setGamePaused(false); document.getElementById('withdrawModal').classList.add('hidden'); }
-
 async function openReferral(){ setGamePaused(true); try{ const res=await fetchWithTimeout(API_URL+'/api/referral',{headers:{'Authorization':getAuthHeader()}}); if(!res.ok) throw new Error('Erro'); const data=await res.json(); document.getElementById('refLink').textContent=data.referralLink; document.getElementById('totalCommission').textContent=data.totalCommission.toFixed(6)+' GRAM'; document.getElementById('refCount').textContent=data.referrals.length; const listEl=document.getElementById('referralList'); listEl.innerHTML=data.referrals.map(r=>`<div class="referral-item"><span>${r.username||r.telegramId}</span><span>💰 ${(r.totalDeposited||0).toFixed(2)} | +${(r.commissionEarned||0).toFixed(6)}</span></div>`).join('')||'<p style="font-size:0.5rem;">Nenhum indicado.</p>'; document.getElementById('referralModal').classList.remove('hidden'); } catch(e){ showToast(e.message,'error'); setGamePaused(false); document.getElementById('referralModal').classList.add('hidden'); } }
 function copyReferralLink(){ navigator.clipboard.writeText(document.getElementById('refLink').textContent).then(()=>showToast('Link copiado!','success')); }
 function shareReferral(){ const link=document.getElementById('refLink').textContent; if(navigator.share){ navigator.share({title:'Gram Catcher',text:'Jogue e ganhe GRAM!',url:link}); } else { copyReferralLink(); showToast('Link copiado!','success'); } }
 function closeReferral(){ setGamePaused(false); document.getElementById('referralModal').classList.add('hidden'); }
-
 async function loadNotifications() { try { const res = await fetchWithTimeout(API_URL+'/api/notifications'); const data = await res.json(); if (!data || data.length === 0) return; const newNotifs = data.filter(n => !lastNotificationId || n._id > lastNotificationId); if (newNotifs.length > 0) { showGlobalNotification(newNotifs[0].message); lastNotificationId = data[0]._id; localStorage.setItem('gc_last_notif', lastNotificationId); } } catch(e) {} }
-
 const keys={};
 (function(){ const zone=document.getElementById('joystickZone'),thumb=document.getElementById('joystickThumb'); let active=false,currentTouchId=null; function isInputFocused(){ const el=document.activeElement; return el&&(el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA'||el.isContentEditable); } function updateFromInput(dx,dy,maxDist=36){ if(!state.gameStarted||state.isEncounterActive) return; state.joystickDX=dx; state.joystickDY=dy; state.joystickActive=true; thumb.style.transform=`translate(calc(-50% + ${dx*maxDist}px), calc(-50% + ${dy*maxDist}px))`; } function resetInput(){ state.joystickActive=false; state.joystickDX=0; state.joystickDY=0; thumb.style.transform='translate(-50%,-50%)'; } function handleStart(e){ if(!state.gameStarted||state.isEncounterActive||isInputFocused()) return; e.preventDefault(); if(e.touches) currentTouchId=e.touches[0].identifier; active=true; handleMove(e); } function handleMove(e){ if(!active) return; e.preventDefault(); let clientX,clientY; if(e.touches){ for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ clientX=e.touches[i].clientX; clientY=e.touches[i].clientY; break; } } if(clientX===undefined) return; } else { clientX=e.clientX; clientY=e.clientY; } const rect=zone.getBoundingClientRect(); const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2; let dx=clientX-cx,dy=clientY-cy; const dist=Math.hypot(dx,dy),maxDist=36; if(dist>0.01){ dx=(dx/dist)*Math.min(dist,maxDist); dy=(dy/dist)*Math.min(dist,maxDist); } updateFromInput(dx/maxDist,dy/maxDist); } function handleEnd(e){ if(!active) return; if(e.touches){ let found=false; for(let i=0;i<e.touches.length;i++){ if(e.touches[i].identifier===currentTouchId){ found=true; break; } } if(found) return; } active=false; currentTouchId=null; resetInput(); } zone.addEventListener('touchstart',handleStart,{passive:false}); zone.addEventListener('touchmove',handleMove,{passive:false}); zone.addEventListener('touchend',handleEnd); zone.addEventListener('touchcancel',handleEnd); zone.addEventListener('mousedown',handleStart); window.addEventListener('mousemove',(e)=>{ if(active) handleMove(e); }); window.addEventListener('mouseup',handleEnd); window.addEventListener('keydown',(e)=>{ if(isInputFocused()) return; if(!state.gameStarted||state.isEncounterActive) return; keys[e.key]=true; e.preventDefault(); let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } }); window.addEventListener('keyup',(e)=>{ if(isInputFocused()) return; keys[e.key]=false; if(!keys['ArrowLeft']&&!keys['a']&&!keys['ArrowRight']&&!keys['d']&&!keys['ArrowUp']&&!keys['w']&&!keys['ArrowDown']&&!keys['s']){ resetInput(); } else { let dx=0,dy=0; if(keys['ArrowLeft']||keys['a']) dx=-1; if(keys['ArrowRight']||keys['d']) dx=1; if(keys['ArrowUp']||keys['w']) dy=-1; if(keys['ArrowDown']||keys['s']) dy=1; if(dx||dy){ const mag=Math.hypot(dx,dy); updateFromInput(dx/mag,dy/mag); } } }); })();
-
 const loadingTips=['CARREGANDO POKÉDEX...','PROCURANDO POKÉMON RAROS...','✨ SHINY: 2X GRAM ✨','UM MUNDO DE AVENTURAS TE ESPERA!'];
 let tipIndex=0;
 let notifInterval = null;
