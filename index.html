@@ -797,38 +797,71 @@ function openEvolveModal(pokemonId) {
     setGamePaused(true);
     document.getElementById('evolveModal').classList.remove('hidden');
 }
-function closeEvolveModal() { if (isEvolving) return; evolveData = null; setGamePaused(false); document.getElementById('evolveModal').classList.add('hidden'); }
+
+function closeEvolveModal() {
+    if (isEvolving) return;
+    evolveData = null;
+    setGamePaused(false);
+    document.getElementById('evolveModal').classList.add('hidden');
+    // Garantir que o jogo continue rodando
+    state.gamePaused = false;
+}
+
 async function confirmEvolution() {
     if (isEvolving || !evolveData) return;
+
+    // Confirmação dupla
+    if (!confirm(`Tem certeza que deseja evoluir?\nCusto: ${evolveData.cost} GRAM\n\nEsta ação não pode ser desfeita.`)) {
+        return;
+    }
+
     isEvolving = true;
     const btn = document.getElementById('evolveConfirmBtn');
-    btn.disabled = true; btn.textContent = '🔄 Evoluindo...';
+    btn.disabled = true;
+    btn.textContent = '🔄 Evoluindo...';
+
     const fromImg = document.getElementById('evolveFromImg');
     fromImg.classList.add('evolving');
     createEvolveSparkles();
     SOUND.evolveSound();
+
     try {
-        const res = await fetchWithTimeout(API_URL+'/api/evolve', { method:'POST', headers:{'Content-Type':'application/json','Authorization':getAuthHeader()}, body:JSON.stringify({pokemonId: evolveData.pokemonId}) });
+        const res = await fetchWithTimeout(API_URL+'/api/evolve', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},
+            body:JSON.stringify({pokemonId: evolveData.pokemonId})
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+
         state.balance = data.newBalance;
         state.collection[evolveData.idx] = data.evolvedPokemon;
         updateBalance();
+
         setTimeout(() => {
             fromImg.classList.remove('evolving');
             fromImg.src = getPokemonSpriteUrl(data.evolvedPokemon.pokemonId, true);
             showToast(`🌟 Evoluído para ${data.evolvedPokemon.name}!`, 'success');
             SOUND.transaction();
-            closeEvolveModal();
+            
+            isEvolving = false;
+            evolveData = null;
+            setGamePaused(false);
+            document.getElementById('evolveModal').classList.add('hidden');
             updateCollectionUI();
         }, 2000);
+
     } catch(e) {
         showToast(e.message, 'error');
+        
         fromImg.classList.remove('evolving');
-        btn.disabled = false; btn.textContent = '✨ Evoluir';
+        btn.disabled = false;
+        btn.textContent = '✨ Evoluir';
         isEvolving = false;
+        setGamePaused(false);
     }
 }
+
 function createEvolveSparkles() { const container = document.getElementById('evolveSparklesContainer'); container.innerHTML = ''; for (let i = 0; i < 20; i++) { const sparkle = document.createElement('div'); sparkle.className = 'evolve-sparkle'; sparkle.style.left = (40 + Math.random() * 20) + '%'; sparkle.style.top = (40 + Math.random() * 20) + '%'; sparkle.style.setProperty('--tx', (Math.random() - 0.5) * 80 + 'px'); sparkle.style.setProperty('--ty', (Math.random() - 0.5) * 80 + 'px'); container.appendChild(sparkle); setTimeout(() => sparkle.remove(), 1500); } }
 
 function openDeposit(){ setGamePaused(true); document.getElementById('depositTxHash').value=''; document.getElementById('depositAmount').value=''; document.getElementById('depositStatus').innerHTML=''; document.getElementById('depositModal').classList.remove('hidden'); }
